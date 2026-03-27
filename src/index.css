@@ -1,0 +1,311 @@
+/* ========================================
+   QUEVEMOSPUES — Design System
+   Paleta: Dark Cinematic + Purple Accents
+   Inspirado en diseño Stitch
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* ---- CSS Custom Properties ---- */
+:root {
+  /* Surfaces */
+  --fondo-principal: #080b14;
+  --fondo-elevado: #0d1121;
+  --fondo-tarjeta: #111628;
+  --fondo-tarjeta-hover: #161c34;
+  --fondo-entrada: #0a0f1e;
+  --fondo-modal: #0f1425;
+
+  /* Borders */
+  --borde-sutil: rgba(139, 92, 246, 0.08);
+  --borde-normal: rgba(139, 92, 246, 0.15);
+  --borde-enfoque: rgba(139, 92, 246, 0.5);
+  --borde-activo: rgba(139, 92, 246, 0.8);
+
+  /* Text */
+  --texto-primario: #e8eaf0;
+  --texto-secundario: #9ca3b4;
+  --texto-terciario: #636d83;
+  --texto-muted: #3d4559;
+
+  /* Accents */
+  --acento-primario: #8b5cf6;
+  --acento-hover: #a78bfa;
+  --acento-glow: rgba(139, 92, 246, 0.25);
+  --acento-suave: rgba(139, 92, 246, 0.1);
+
+  /* Semantic */
+  --exito: #34d399;
+  --error: #f87171;
+  --advertencia: #fbbf24;
+  --info: #60a5fa;
+
+  /* Favorites heart */
+  --favorito: #ec4899;
+  --favorito-hover: #f472b6;
+
+  /* Spacing */
+  --espacio-xs: 4px;
+  --espacio-sm: 8px;
+  --espacio-md: 16px;
+  --espacio-lg: 24px;
+  --espacio-xl: 32px;
+  --espacio-2xl: 48px;
+  --espacio-3xl: 64px;
+
+  /* Radius */
+  --radio-sm: 6px;
+  --radio-md: 10px;
+  --radio-lg: 16px;
+  --radio-xl: 20px;
+  --radio-redondo: 9999px;
+
+  /* Shadows */
+  --sombra-tarjeta: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --sombra-elevada: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --sombra-glow: 0 0 30px rgba(139, 92, 246, 0.15);
+
+  /* Transitions */
+  --transicion-rapida: 150ms ease;
+  --transicion-normal: 250ms ease;
+  --transicion-suave: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Typography */
+  --fuente-principal: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --fuente-display: 'Space Grotesk', 'Inter', sans-serif;
+}
+
+/* ---- Reset & Base ---- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--fuente-principal);
+  background-color: var(--fondo-principal);
+  color: var(--texto-primario);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+  border: none;
+  outline: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--fondo-principal);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--borde-normal);
+  border-radius: var(--radio-redondo);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--acento-primario);
+}
+
+/* ---- Utility Classes ---- */
+.contenedor {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--espacio-lg);
+}
+
+/* ---- Loading Spinner ---- */
+.spinner-contenedor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espacio-3xl) 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--borde-sutil);
+  border-top-color: var(--acento-primario);
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Animations ---- */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes deslizarDerecha {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animar-aparecer {
+  animation: aparecer 0.5s var(--transicion-suave) both;
+}
+
+.animar-deslizar {
+  animation: deslizarDerecha 0.4s var(--transicion-suave) both;
+}
+
+/* Stagger children animations */
+.animar-escalonado > * {
+  animation: aparecer 0.5s var(--transicion-suave) both;
+}
+.animar-escalonado > *:nth-child(1) { animation-delay: 0.05s; }
+.animar-escalonado > *:nth-child(2) { animation-delay: 0.1s; }
+.animar-escalonado > *:nth-child(3) { animation-delay: 0.15s; }
+.animar-escalonado > *:nth-child(4) { animation-delay: 0.2s; }
+.animar-escalonado > *:nth-child(5) { animation-delay: 0.25s; }
+.animar-escalonado > *:nth-child(6) { animation-delay: 0.3s; }
+.animar-escalonado > *:nth-child(7) { animation-delay: 0.35s; }
+.animar-escalonado > *:nth-child(8) { animation-delay: 0.4s; }
+
+/* ---- Toast / Messages ---- */
+.mensaje-error {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--error);
+  padding: var(--espacio-md);
+  border-radius: var(--radio-md);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.mensaje-vacio {
+  text-align: center;
+  padding: var(--espacio-3xl) var(--espacio-lg);
+  color: var(--texto-terciario);
+}
+
+.mensaje-vacio h3 {
+  font-size: 1.25rem;
+  color: var(--texto-secundario);
+  margin-bottom: var(--espacio-sm);
+}
+
+.mensaje-vacio p {
+  font-size: 0.9rem;
+}
+
+/* ---- Buttons ---- */
+.boton-primario {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-sm);
+  padding: var(--espacio-sm) var(--espacio-lg);
+  background: var(--acento-primario);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radio-md);
+  transition: all var(--transicion-normal);
+  white-space: nowrap;
+}
+
+.boton-primario:hover {
+  background: var(--acento-hover);
+  box-shadow: var(--sombra-glow);
+  transform: translateY(-1px);
+}
+
+.boton-primario:active {
+  transform: translateY(0);
+}
+
+.boton-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-sm);
+  padding: var(--espacio-sm) var(--espacio-lg);
+  background: transparent;
+  color: var(--texto-primario);
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: 1px solid var(--borde-normal);
+  border-radius: var(--radio-md);
+  transition: all var(--transicion-normal);
+  white-space: nowrap;
+}
+
+.boton-secundario:hover {
+  border-color: var(--acento-primario);
+  background: var(--acento-suave);
+}
+
+/* ---- Badge / etiquetas ---- */
+.etiqueta {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radio-sm);
+  background: var(--acento-suave);
+  color: var(--acento-hover);
+  border: 1px solid var(--borde-sutil);
+}
+
+.etiqueta-pelicula { background: rgba(96, 165, 250, 0.12); color: #60a5fa; border-color: rgba(96, 165, 250, 0.2); }
+.etiqueta-serie { background: rgba(52, 211, 153, 0.12); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+.etiqueta-anime { background: rgba(251, 146, 60, 0.12); color: #fb923c; border-color: rgba(251, 146, 60, 0.2); }
