@@ -1,0 +1,129 @@
+.tarjeta-contenido {
+  position: relative;
+  border-radius: var(--radio-lg);
+  overflow: hidden;
+  background: var(--fondo-tarjeta);
+  border: 1px solid var(--borde-sutil);
+  cursor: pointer;
+  transition: all var(--transicion-normal);
+  animation: aparecer 0.5s ease both;
+}
+
+.tarjeta-contenido:hover {
+  transform: translateY(-6px);
+  border-color: var(--borde-normal);
+  box-shadow: var(--sombra-tarjeta), var(--sombra-glow);
+  background: var(--fondo-tarjeta-hover);
+}
+
+.tarjeta-imagen-wrapper {
+  position: relative;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+}
+
+.tarjeta-imagen {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transicion-suave);
+}
+
+.tarjeta-contenido:hover .tarjeta-imagen {
+  transform: scale(1.05);
+}
+
+.tarjeta-imagen-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--fondo-tarjeta), var(--fondo-elevado));
+  color: var(--texto-terciario);
+}
+
+.tarjeta-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(8, 11, 20, 0.85) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity var(--transicion-normal);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: var(--espacio-md);
+}
+
+.tarjeta-contenido:hover .tarjeta-overlay {
+  opacity: 1;
+}
+
+.tarjeta-fav-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  color: var(--texto-secundario);
+  transition: all var(--transicion-rapida);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tarjeta-fav-btn:hover {
+  color: var(--favorito-hover);
+  background: rgba(236, 72, 153, 0.2);
+  border-color: var(--favorito);
+}
+
+.tarjeta-fav-btn.activo {
+  color: var(--favorito);
+  background: rgba(236, 72, 153, 0.15);
+}
+
+.tarjeta-badge-grupo {
+  position: absolute;
+  bottom: var(--espacio-sm);
+  left: var(--espacio-sm);
+  display: flex;
+  gap: var(--espacio-xs);
+  align-items: center;
+}
+
+.tarjeta-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: var(--radio-sm);
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.tarjeta-info {
+  padding: var(--espacio-md);
+}
+
+.tarjeta-titulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texto-primario);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tarjeta-anio {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--texto-terciario);
+}
