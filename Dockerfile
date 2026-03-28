@@ -36,9 +36,12 @@ RUN rm -rf /usr/share/nginx/html/*
 # Copiar los de nuestra build
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copiar un archivo de configuración si hace falta manejar el enrutamiento de React (Single Page App)
+# Copiar un archivo de configuración para manejar el enrutamiento de React (SPA) y los MIME types correctos
 RUN echo "server { \
     listen 80; \
+    server_name _; \
+    include /etc/nginx/mime.types; \
+    default_type application/octet-stream; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \
