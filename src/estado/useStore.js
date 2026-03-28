@@ -27,7 +27,7 @@ export const useStore = create((set, get) => ({
 
   cerrarSesion: async () => {
     await supabase.auth.signOut();
-    set({ usuario: null, favoritos: [], historial: [] });
+    set({ favoritos: [], historial: [] });
   },
 
   // ---- Favoritos ----
