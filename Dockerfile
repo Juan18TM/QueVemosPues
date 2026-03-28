@@ -3,6 +3,18 @@ FROM node:22.13-alpine as builder
 
 WORKDIR /app
 
+# Recibir argumentos de build desde Dokploy (Environment variables mapping)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_TMDB_API_KEY
+ARG VITE_OPENROUTER_API_KEY
+
+# Convertirlos en variables de entorno fijas para que Vite las lea en el build
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_TMDB_API_KEY=$VITE_TMDB_API_KEY
+ENV VITE_OPENROUTER_API_KEY=$VITE_OPENROUTER_API_KEY
+
 # Copiar package.json y package-lock.json si existe
 COPY package*.json ./
 
