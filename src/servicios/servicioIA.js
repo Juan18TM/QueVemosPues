@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const MODELOS_GRATUITOS = [
-  'stepfun/step-3.5-flash:free',
+  
   'meta-llama/llama-3-8b-instruct',
   'mistralai/mistral-7b-instruct',
   'openchat/openchat-7b',
