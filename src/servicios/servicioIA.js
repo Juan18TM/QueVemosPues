@@ -54,8 +54,8 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     2. "generos": lista de géneros en español.
     3. "palabras_clave": términos para búsqueda textual.
     4. "titulo_referencia": Si el usuario menciona un título, extrae SOLO el nombre corregido. Si no, null.
-    5. "mensaje": Un breve mensaje de IA al usuario. SÚPER IMPORTANTE: NO uses comillas dobles (") dentro del mensaje, si necesitas citar una película usa comillas simples (').
-    6. "titulos_recomendados": Un arreglo con exactamente los nombres de 10 títulos que recomiendas en tu mensaje y concuerdan con la búsqueda. Nombres muy precisos.
+    5. "mensaje": Un breve mensaje de IA al usuario. SÚPER IMPORTANTE: NO uses comillas dobles (") dentro del mensaje, usa simples (').
+    6. "titulos_recomendados": Un arreglo con exactamente 10 títulos. SÚPER IMPORTANTE: Deben ser EXTREMADAMENTE RELEVANTES a la solicitud original. Si el usuario busca algo como otra obra o una vibra específica, prioriza obligatoriamente secuelas, spin-offs directos de ese mismo universo, o producciones modernas que compartan exactamente el mismo tono, atmósfera y género de acción/estilo. No des resultados genéricos o antiguos si buscan algo moderno. Nombres muy exactos.
     7. Responde SOLO el JSON puramente, asegurando que tiene un formato válido sin errores de sintaxis.
   `;
 
@@ -67,7 +67,8 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
       'https://openrouter.ai/api/v1/chat/completions',
       {
         model: modelo,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' }
       },
       {
         headers: {
@@ -80,7 +81,12 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     );
 
     let con = respuesta.data.choices[0].message.content;
-    con = con.replace(/```json|```/g, '').trim();
+    
+    // Extraer solo la parte que parece JSON por si la IA agregó texto alrededor
+    const matchJson = con.match(/\{[\s\S]*\}/);
+    if (matchJson) {
+      con = matchJson[0];
+    }
     const resultadoPrseado = JSON.parse(con);
     
     // Guardar en caché antes de retornar
@@ -88,12 +94,13 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     return resultadoPrseado;
   } catch (error) {
     const status = error.response?.status;
-    const esErrorRotable = status === 429 || status === 404 || status === 502;
+    const esErrorDeParseoJSON = error instanceof SyntaxError;
+    const esErrorRotable = status === 429 || status === 404 || status === 502 || esErrorDeParseoJSON;
 
     if (esErrorRotable && reintentos < MODELOS_GRATUITOS.length - 1) {
       // Rotar al siguiente modelo y reintentar
       indiceActual = (indiceActual + 1) % MODELOS_GRATUITOS.length;
-      console.warn(`Error ${status} en OpenRouter. Rotando a modelo: ${MODELOS_GRATUITOS[indiceActual]}`);
+      console.warn(`Error en modelo (Parseo/HTTP). Rotando a: ${MODELOS_GRATUITOS[indiceActual]}`);
       
       // Si el error es 429, hacer un pequeño retraso antes de reintentar
       if (status === 429) {
