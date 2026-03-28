@@ -138,6 +138,9 @@ export default function Buscar() {
         }
       }
 
+      // Filtrar resultados sin rating (0.0) que suelen ser irrelevantes
+      resultadosNuevos = resultadosNuevos.filter(r => parseFloat(r.rating) > 0);
+
       // Ordenar resultados de más recientes a más antiguos (por año)
       resultadosNuevos.sort((a, b) => {
         const yearA = parseInt(a.anio) || 0;
