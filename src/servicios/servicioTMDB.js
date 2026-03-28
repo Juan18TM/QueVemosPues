@@ -126,3 +126,28 @@ function formatearResultado(item, tipo) {
     anio: (item.release_date || item.first_air_date || '').substring(0, 4)
   };
 }
+
+export async function obtenerProveedores(id, tipo = 'pelicula') {
+  const mediaType = tipo === 'pelicula' ? 'movie' : 'tv';
+
+  try {
+    const { data } = await tmdb.get(`/${mediaType}/${id}/watch/providers`);
+    // Priorizar Colombia, luego LATAM, luego US
+    const region = data.results?.CO || data.results?.MX || data.results?.AR || data.results?.US;
+    
+    if (!region) return { plataformas: [], link: null };
+
+    const plataformas = (region.flatrate || []).map(p => ({
+      nombre: p.provider_name,
+      logo: `https://image.tmdb.org/t/p/w92${p.logo_path}`
+    }));
+
+    return {
+      plataformas,
+      link: region.link || null
+    };
+  } catch (error) {
+    console.error('Error TMDB proveedores:', error);
+    return { plataformas: [], link: null };
+  }
+}

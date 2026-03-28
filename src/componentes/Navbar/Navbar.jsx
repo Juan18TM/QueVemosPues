@@ -20,8 +20,8 @@ export default function Navbar() {
         </Link>
 
         <div className="navbar-enlaces">
-          <Link to="/" className="navbar-enlace">Movies</Link>
-          <Link to="/?tipo=serie" className="navbar-enlace">TV Shows</Link>
+          <Link to="/" className="navbar-enlace">Peliculas</Link>
+          <Link to="/?tipo=serie" className="navbar-enlace">Series</Link>
           <Link to="/?tipo=anime" className="navbar-enlace">Anime</Link>
           {usuario && <Link to="/favoritos" className="navbar-enlace">Favoritos</Link>}
         </div>
