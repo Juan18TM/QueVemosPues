@@ -240,7 +240,7 @@ export default function Buscar() {
             type="text"
             value={consulta}
             onChange={(e) => setConsulta(e.target.value)}
-            placeholder='Ej: "anime romántico", "algo como Interstellar", "thriller psicológico"...'
+            placeholder='Pregunta: recomiendame peliculas como...'
             className="buscar-input"
             autoFocus
           />
