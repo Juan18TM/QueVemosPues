@@ -204,7 +204,7 @@ export default function Inicio() {
                 <p className="cta-texto">
                   {usuario
                     ? 'Deja que nuestra IA te recomiende algo perfecto para tu estado de ánimo.'
-                    : 'Únete a miles de cinéfilos y deja que nuestra IA cure tu fin de semana. Crea listas personalizadas, sigue a tus amigos y nunca te pierdas un estreno.'
+                    : 'Únete a miles de cinéfilos y deja que nuestra IA cure tu fin de semana. Crea listas personalizadas y nunca te pierdas un estreno.'
                   }
                 </p>
                 <div className="cta-botones">

@@ -21,15 +21,20 @@ export default function PanelDetalle({ detalle, similares = [], onClose, onClick
 
   // Cargar proveedores de streaming cuando cambie el detalle
   useEffect(() => {
-    if (detalle.tipo === 'anime') {
-      setProveedores(null);
-      return;
-    }
     setCargandoProveedores(true);
-    obtenerProveedores(detalle.id, detalle.tipo)
-      .then(data => setProveedores(data))
-      .catch(() => setProveedores(null))
-      .finally(() => setCargandoProveedores(false));
+    if (detalle.tipo === 'anime') {
+      import('../../servicios/servicioJikan').then(mod => {
+        mod.obtenerProveedoresAnime(detalle.id)
+          .then(data => setProveedores(data))
+          .catch(() => setProveedores(null))
+          .finally(() => setCargandoProveedores(false));
+      });
+    } else {
+      obtenerProveedores(detalle.id, detalle.tipo)
+        .then(data => setProveedores(data))
+        .catch(() => setProveedores(null))
+        .finally(() => setCargandoProveedores(false));
+    }
   }, [detalle.id, detalle.tipo]);
 
   const nombreTipo = { pelicula: 'MOVIE', serie: 'TV SHOW', anime: 'ANIME' };
@@ -73,42 +78,42 @@ export default function PanelDetalle({ detalle, similares = [], onClose, onClick
           <p className="panel-descripcion">{detalle.descripcion}</p>
         </div>
 
-        {/* Sección de streaming - películas y series */}
-        {detalle.tipo !== 'anime' && (
-          <div className="panel-seccion">
-            <h4 className="panel-seccion-titulo">DISPONIBLE EN</h4>
-            {cargandoProveedores ? (
-              <div className="panel-streaming-cargando">Buscando plataformas...</div>
-            ) : proveedores && proveedores.plataformas.length > 0 ? (
-              <>
-                <div className="panel-streaming-logos">
-                  {proveedores.plataformas.map(p => (
-                    <a
-                      key={p.nombre}
-                      href={proveedores.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="panel-streaming-item"
-                      title={`Ver en ${p.nombre}`}
-                    >
-                      <img src={p.logo} alt={p.nombre} />
-                      <span>{p.nombre}</span>
-                    </a>
-                  ))}
-                </div>
-                {proveedores.link && (
+        {/* Sección de streaming - películas, series y anime */}
+        <div className="panel-seccion">
+          <h4 className="panel-seccion-titulo">DISPONIBLE EN</h4>
+          {cargandoProveedores ? (
+            <div className="panel-streaming-cargando">Buscando plataformas...</div>
+          ) : proveedores && proveedores.plataformas.length > 0 ? (
+            <>
+              <div className="panel-streaming-logos">
+                {proveedores.plataformas.map(p => (
                   <a
-                    href={proveedores.link}
+                    key={p.nombre}
+                    href={p.link || proveedores.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="panel-donde-btn"
+                    className="panel-streaming-item"
+                    title={`Ver en ${p.nombre}`}
                   >
-                    <ExternalLink size={14} />
-                    Ver todas las opciones
+                    <img src={p.logo} alt={p.nombre} />
+                    <span>{p.nombre}</span>
                   </a>
-                )}
-              </>
-            ) : (
+                ))}
+              </div>
+              {proveedores.link && (
+                <a
+                  href={proveedores.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="panel-donde-btn"
+                >
+                  <ExternalLink size={14} />
+                  Ver todas las opciones
+                </a>
+              )}
+            </>
+          ) : (
+            <>
               <a
                 href={`https://www.google.com/search?q=d%C3%B3nde+ver+${encodeURIComponent(detalle.titulo)}+online`}
                 target="_blank"
@@ -119,22 +124,20 @@ export default function PanelDetalle({ detalle, similares = [], onClose, onClick
                 <span>No disponible en streaming — Buscar dónde verla</span>
                 <ExternalLink size={14} />
               </a>
-            )}
-          </div>
-        )}
-
-        {/* Enlace para anime */}
-        {detalle.tipo === 'anime' && (
-          <a
-            href={`https://myanimelist.net/anime/${detalle.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="panel-donde-btn"
-          >
-            <ExternalLink size={16} />
-            Ver en MyAnimeList
-          </a>
-        )}
+              {detalle.tipo === 'anime' && (
+                <a
+                  href={`https://myanimelist.net/anime/${detalle.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="panel-donde-btn mt-2"
+                >
+                  <ExternalLink size={16} />
+                  Ver Ficha en MyAnimeList
+                </a>
+              )}
+            </>
+          )}
+        </div>
 
         {similares.length > 0 && (
           <div className="panel-seccion">
