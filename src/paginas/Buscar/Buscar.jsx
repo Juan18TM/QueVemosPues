@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Sparkles, Loader } from 'lucide-react';
 import TarjetaContenido from '../../componentes/TarjetaContenido/TarjetaContenido';
+import SkeletonTarjeta from '../../componentes/SkeletonTarjeta/SkeletonTarjeta';
 import PanelDetalle from '../../componentes/PanelDetalle/PanelDetalle';
 import { analizarTextoConIA } from '../../servicios/servicioIA';
 import { buscarPorGeneros, buscarPorTexto, obtenerDetalles, obtenerSimilares } from '../../servicios/servicioTMDB';
@@ -21,8 +22,10 @@ export default function Buscar() {
   const [similares, setSimilares] = useState([]);
   const [analisisIA, setAnalisisIA] = useState(null);
   const [pagina, setPagina] = useState(1);
+  const [idReferenciaActual, setIdReferenciaActual] = useState(null);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const { usuario, guardarBusqueda } = useStore();
-  const itemsPorPagina = 10;
+  const itemsPorPagina = 20;
 
   const consultaDebounce = useDebounce(consulta, 1500);
 
@@ -41,6 +44,7 @@ export default function Buscar() {
   }, [searchParams]);
 
   async function realizarBusqueda(texto) {
+    const startTime = Date.now();
     setCargando(true);
     setAnalizando(true);
     setAnalisisIA(null);
@@ -59,6 +63,7 @@ export default function Buscar() {
 
       // Paso 3: Buscar contenido según el análisis
       let resultadosNuevos = [];
+      let idReferencia = null;
 
       // NUEVO: Buscar los títulos específicos recomendados por la IA
       if (analisis.titulos_recomendados && analisis.titulos_recomendados.length > 0) {
@@ -93,7 +98,6 @@ export default function Buscar() {
         const referenciaFinal = analisis.titulo_referencia || tituloReferenciaLocal;
 
         // Determinar de qué obra vamos a sacar los "similares" de relleno
-        let idReferencia = null;
         if (referenciaFinal) {
           console.log('Fijando título de referencia estricto:', referenciaFinal);
           const resRef = analisis.tipo === 'anime' 
@@ -120,7 +124,7 @@ export default function Buscar() {
         }
         
         const mapa = new Map();
-        [...itemsRecomendados, ...extras].forEach(r => mapa.set(r.id, r));
+        [...itemsRecomendados, ...extras].forEach(r => mapa.set(`${r.tipo}-${r.id}`, r));
         resultadosNuevos = Array.from(mapa.values());
         
       } else if (analisis.titulo_referencia) {
@@ -137,6 +141,7 @@ export default function Buscar() {
           const res = await buscarPorTexto(analisis.titulo_referencia, analisis.tipo);
           if (res.length > 0) obraReferencia = res[0];
           if (obraReferencia) {
+            idReferencia = obraReferencia.id;
             resultadosNuevos = await obtenerSimilares(obraReferencia.id, analisis.tipo);
           }
         }
@@ -152,7 +157,7 @@ export default function Buscar() {
           
           const [porTexto, porGenero = []] = await Promise.all(promesas);
           const mapa = new Map();
-          [...porTexto, ...porGenero].forEach(r => mapa.set(r.id, r));
+          [...porTexto, ...porGenero].forEach(r => mapa.set(`${r.tipo}-${r.id}`, r));
           resultadosNuevos = Array.from(mapa.values());
         } else {
           const tipo = analisis.tipo;
@@ -162,7 +167,7 @@ export default function Buscar() {
 
           const [porTexto, porGenero = []] = await Promise.all(promesas);
           const mapa = new Map();
-          [...porTexto, ...porGenero].forEach(r => mapa.set(r.id, r));
+          [...porTexto, ...porGenero].forEach(r => mapa.set(`${r.tipo}-${r.id}`, r));
           resultadosNuevos = Array.from(mapa.values());
         }
       }
@@ -189,12 +194,105 @@ export default function Buscar() {
         return yearB - yearA;
       });
 
-      setResultados(resultadosNuevos);
+      // Guardar el ID de referencia para paginación inteligente si aplica
+      setIdReferenciaActual(idReferencia);
+
+      // ESPERA MINIMA (800ms) para que el Shimmer de la IA se luzca
+      const elapsed = Date.now() - startTime;
+      const waitTime = Math.max(0, 800 - elapsed);
+
+      setTimeout(() => {
+        setResultados(resultadosNuevos);
+        setCargando(false);
+        setAnalizando(false);
+      }, waitTime);
+
     } catch (error) {
       console.error('Error en búsqueda:', error);
-    } finally {
       setCargando(false);
       setAnalizando(false);
+    }
+  }
+
+  async function cargarMas() {
+    console.log('--- Intentando Cargar Más ---');
+    if (cargandoMas || !analisisIA) {
+      console.log('Cancelado:', cargandoMas ? 'Cargando actualmente' : 'No hay análisis IA');
+      return;
+    }
+    
+    const startTime = Date.now();
+    setCargandoMas(true);
+    const siguientePagina = pagina + 1;
+    console.log(`Cargando página ${siguientePagina} para el modo: ${idReferenciaActual ? 'Similitud' : 'Descubrimiento'}`);
+
+    try {
+      let nuevos = [];
+      
+      // MODO 1: Persistencia de Similitud (idReferenciaActual)
+      if (idReferenciaActual) {
+        if (analisisIA.tipo === 'anime') {
+          if (analisisIA.generos.length > 0) {
+            nuevos = await buscarAnimePorGeneros(analisisIA.generos, siguientePagina);
+          }
+        } else {
+          nuevos = await obtenerSimilares(idReferenciaActual, analisisIA.tipo, siguientePagina);
+        }
+      } 
+      // MODO 2: Descubrimiento Inteligente (Generos / Keywords)
+      else {
+        const busquedaTexto = analisisIA.palabras_clave.join(' ') || consulta;
+        if (analisisIA.tipo === 'anime') {
+          if (analisisIA.generos.length > 0) {
+            nuevos = await buscarAnimePorGeneros(analisisIA.generos, siguientePagina);
+          } else {
+            nuevos = await buscarAnimePorTexto(busquedaTexto, siguientePagina);
+          }
+        } else {
+          if (analisisIA.generos.length > 0) {
+            nuevos = await buscarPorGeneros(analisisIA.tipo, analisisIA.generos, siguientePagina);
+          } else {
+            nuevos = await buscarPorTexto(busquedaTexto, analisisIA.tipo, siguientePagina);
+          }
+        }
+      }
+
+      console.log(`Recibidos ${nuevos.length} resultados de la API`);
+
+      // 1. Filtrar por calidad inmediatamente
+      const calificados = nuevos.filter(r => {
+        const rating = parseFloat(r.rating);
+        return !isNaN(rating) && rating > 0;
+      });
+
+      // 2. UNION ABSOLUTA: Usamos un Map para garantizar unicidad total (Prev + Nuevos)
+      const mapaTotal = new Map();
+      resultados.forEach(r => mapaTotal.set(`${r.tipo}-${r.id}`, r));
+      calificados.forEach(r => {
+        const key = `${r.tipo}-${r.id}`;
+        if (!mapaTotal.has(key)) mapaTotal.set(key, r);
+      });
+
+      const listaFinal = Array.from(mapaTotal.values());
+      const cantidadNuevos = listaFinal.length - resultados.length;
+
+      console.log(`${cantidadNuevos} resultados realmente nuevos añadidos.`);
+
+      // CALCULAR ESPERA MINIMA (800ms) para que el shimmer se vea de lujo
+      const elapsed = Date.now() - startTime;
+      const waitTime = Math.max(0, 800 - elapsed);
+
+      setTimeout(() => {
+        if (cantidadNuevos > 0) {
+          setResultados(listaFinal);
+        }
+        setPagina(siguientePagina);
+        setCargandoMas(false);
+      }, waitTime);
+      
+    } catch (error) {
+      console.error('Error al cargar más:', error);
+      setCargandoMas(false);
     }
   }
 
@@ -223,7 +321,8 @@ export default function Buscar() {
     ? resultados
     : resultados.filter(r => r.tipo === filtroTipo);
 
-  const resultadosPaginados = resultadosFiltrados.slice(0, pagina * itemsPorPagina);
+  // Ya no necesitamos resultadosPaginados (slice) porque cargamos de verdad desde la API
+  const resultadosParaMostrar = resultadosFiltrados;
 
   return (
     <div className="buscar-pagina contenedor">
@@ -305,12 +404,17 @@ export default function Buscar() {
             </h2>
           )}
 
-          {cargando ? (
-            <div className="spinner-contenedor"><div className="spinner" /></div>
-          ) : resultadosPaginados.length > 0 ? (
-            <>
-              <div className="grid-contenido animar-escalonado">
-                {resultadosPaginados.map((item, i) => (
+          {(cargando || analizando) ? (
+            <div className="grid-contenido">
+              {[...Array(10)].map((_, i) => (
+                <SkeletonTarjeta key={i} />
+              ))}
+            </div>
+          ) : resultadosParaMostrar.length > 0 ? (
+            <div className="buscar-resultados-bloque">
+              {/* Contenedor de la cuadrícula estable */}
+              <div className="grid-contenido">
+                {resultadosParaMostrar.map((item, i) => (
                   <TarjetaContenido
                     key={`${item.tipo}-${item.id}`}
                     contenido={item}
@@ -318,15 +422,41 @@ export default function Buscar() {
                     indice={i}
                   />
                 ))}
+                
+                {/* Skeletons adicionales al cargar más: 8 para llenar la vista */}
+                {cargandoMas && [...Array(8)].map((_, i) => (
+                  <SkeletonTarjeta key={`skeleton-mas-${pagina}-${i}`} />
+                ))}
               </div>
-              {resultadosFiltrados.length > pagina * itemsPorPagina && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--espacio-xl)' }}>
-                  <button className="boton-secundario" onClick={() => setPagina(p => p + 1)}>
-                    Ver más resultados
-                  </button>
-                </div>
-              )}
-            </>
+              
+              <div className="buscar-ver-mas-contenedor">
+                <button 
+                  className="boton-secundario" 
+                  onClick={cargarMas}
+                  disabled={cargandoMas}
+                  style={{ minWidth: '180px', position: 'relative' }}
+                >
+                  {/* LOGICA ESTATICA: Los elementos SIEMPRE existen para evitar errores de reconciliación */}
+                  <span style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px',
+                    opacity: cargandoMas ? 0.7 : 1,
+                    transition: 'opacity 0.2s'
+                  }}>
+                    <Loader 
+                      size={16} 
+                      className="spinner-mini" 
+                      style={{ 
+                        visibility: cargandoMas ? 'visible' : 'hidden',
+                        opacity: cargandoMas ? 1 : 0
+                      }} 
+                    />
+                    <span>{cargandoMas ? 'Cargando más...' : 'Ver más resultados'}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
           ) : consultaDebounce.trim().length >= 3 && !cargando ? (
             <div className="mensaje-vacio">
               <h3>No se encontraron resultados</h3>

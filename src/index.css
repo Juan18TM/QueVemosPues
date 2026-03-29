@@ -199,6 +199,22 @@ ul, ol {
   50% { opacity: 0.5; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg, 
+    var(--fondo-tarjeta) 20%, 
+    rgba(139, 92, 246, 0.2) 50%, 
+    var(--fondo-tarjeta) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
 .animar-aparecer {
   animation: aparecer 0.5s var(--transicion-suave) both;
 }

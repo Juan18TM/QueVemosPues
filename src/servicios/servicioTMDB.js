@@ -65,11 +65,13 @@ export async function buscarPorTexto(consulta, tipo = 'pelicula', pagina = 1) {
   }
 }
 
-export async function obtenerSimilares(id, tipo = 'pelicula') {
+export async function obtenerSimilares(id, tipo = 'pelicula', pagina = 1) {
   const mediaType = tipo === 'pelicula' ? 'movie' : 'tv';
 
   try {
-    const { data } = await tmdb.get(`/${mediaType}/${id}/similar`);
+    const { data } = await tmdb.get(`/${mediaType}/${id}/similar`, {
+      params: { page: pagina }
+    });
     return data.results.map(item => formatearResultado(item, tipo));
   } catch (error) {
     console.error('Error TMDB similares:', error);
