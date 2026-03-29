@@ -12,6 +12,16 @@ export default function Navbar() {
     navigate('/');
   };
 
+  const handleScrollToContent = (e) => {
+    // Si ya estamos en la misma página, forzamos el scroll
+    const el = document.getElementById('contenido-principal');
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-contenido contenedor">
@@ -20,9 +30,9 @@ export default function Navbar() {
         </Link>
 
         <div className="navbar-enlaces">
-          <Link to="/" className="navbar-enlace">Peliculas</Link>
-          <Link to="/?tipo=serie" className="navbar-enlace">Series</Link>
-          <Link to="/?tipo=anime" className="navbar-enlace">Anime</Link>
+          <Link to="/?tipo=pelicula" className="navbar-enlace" onClick={handleScrollToContent}>Peliculas</Link>
+          <Link to="/?tipo=serie" className="navbar-enlace" onClick={handleScrollToContent}>Series</Link>
+          <Link to="/?tipo=anime" className="navbar-enlace" onClick={handleScrollToContent}>Anime</Link>
           {usuario && <Link to="/favoritos" className="navbar-enlace">Favoritos</Link>}
         </div>
 

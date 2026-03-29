@@ -5,14 +5,31 @@ const BASE_URL = 'https://api.jikan.moe/v4';
 const jikan = axios.create({ baseURL: BASE_URL });
 
 // Rate limiting - Jikan permite ~3 requests/segundo
-let ultimaPeticion = 0;
+let proximaPeticionDisponible = Date.now();
+
 async function esperarRateLimit() {
   const ahora = Date.now();
-  const diferencia = ahora - ultimaPeticion;
-  if (diferencia < 400) {
-    await new Promise(r => setTimeout(r, 400 - diferencia));
+  if (proximaPeticionDisponible > ahora) {
+    const tiempoEspera = proximaPeticionDisponible - ahora;
+    proximaPeticionDisponible += 800; // Bloqueo de 800ms para seguridad extra
+    await new Promise(r => setTimeout(r, Math.max(0, tiempoEspera)));
+  } else {
+    proximaPeticionDisponible = ahora + 800;
   }
-  ultimaPeticion = Date.now();
+}
+
+// Función helper para interceptar errores 429 y reintentarlos automáticamente
+async function fetchConReintento(url, config, reintentos = 2) {
+  try {
+    return await jikan.get(url, config);
+  } catch (error) {
+    if (error.response?.status === 429 && reintentos > 0) {
+      console.warn('Jikan Rate Limit (429) alcanzado. Esperando 2 segundos para reintentar...');
+      await new Promise(r => setTimeout(r, 2000));
+      return fetchConReintento(url, config, reintentos - 1);
+    }
+    throw error;
+  }
 }
 
 const MAPA_GENEROS = {
@@ -31,7 +48,7 @@ export async function buscarAnimePorGeneros(generos, pagina = 1) {
     .join(',');
 
   try {
-    const { data } = await jikan.get('/anime', {
+    const { data } = await fetchConReintento('/anime', {
       params: {
         genres: generoIds || undefined,
         order_by: 'score',
@@ -53,7 +70,7 @@ export async function buscarAnimePorTexto(consulta, pagina = 1) {
   await esperarRateLimit();
 
   try {
-    const { data } = await jikan.get('/anime', {
+    const { data } = await fetchConReintento('/anime', {
       params: {
         q: consulta,
         page: pagina,
@@ -73,7 +90,7 @@ export async function obtenerRecomendacionesAnime(id) {
   await esperarRateLimit();
 
   try {
-    const { data } = await jikan.get(`/anime/${id}/recommendations`);
+    const { data } = await fetchConReintento(`/anime/${id}/recommendations`);
     return data.data.slice(0, 10).map(rec => formatearAnime(rec.entry));
   } catch (error) {
     console.error('Error Jikan recomendaciones:', error);
@@ -85,7 +102,7 @@ export async function obtenerTopAnime(filtro = 'bypopularity', pagina = 1) {
   await esperarRateLimit();
 
   try {
-    const { data } = await jikan.get('/top/anime', {
+    const { data } = await fetchConReintento('/top/anime', {
       params: {
         filter: filtro,
         page: pagina,
@@ -97,6 +114,28 @@ export async function obtenerTopAnime(filtro = 'bypopularity', pagina = 1) {
     return data.data.map(formatearAnime);
   } catch (error) {
     console.error('Error Jikan top anime:', error);
+    return [];
+  }
+}
+
+export async function obtenerAnimePorTipo(tipo = 'movie', pagina = 1) {
+  await esperarRateLimit();
+
+  try {
+    const { data } = await fetchConReintento('/anime', {
+      params: {
+        type: tipo,
+        order_by: 'score',
+        sort: 'desc',
+        page: pagina,
+        limit: 10,
+        sfw: true
+      }
+    });
+
+    return data.data.map(formatearAnime);
+  } catch (error) {
+    console.error('Error Jikan anime por tipo:', error);
     return [];
   }
 }
@@ -123,6 +162,47 @@ export async function obtenerDetallesAnime(id) {
   } catch (error) {
     console.error('Error Jikan detalles:', error);
     return null;
+  }
+}
+
+export async function obtenerProveedoresAnime(id) {
+  await esperarRateLimit();
+  try {
+    const { data } = await fetchConReintento(`/anime/${id}/streaming`);
+    
+    // Diccionario de logos conocidos para plataformas de anime usando SimpleIcons (SVG fijos y estables con colores de marca oficiales)
+    const LOGOS_CONOCIDOS = {
+      'Crunchyroll': 'https://cdn.simpleicons.org/crunchyroll/F47521',
+      'Netflix': 'https://cdn.simpleicons.org/netflix/E50914',
+      'Amazon Prime Video': 'https://cdn.simpleicons.org/primevideo/00A8E1',
+      'Prime Video': 'https://cdn.simpleicons.org/primevideo/00A8E1',
+      'Hulu': 'https://cdn.simpleicons.org/hulu/1CE783',
+      'Funimation': 'https://cdn.simpleicons.org/funimation/5A2EE2',
+      'Disney+': 'https://cdn.simpleicons.org/disney/113CCF',
+      'Disney Plus': 'https://cdn.simpleicons.org/disney/113CCF',
+      'HBO Max': 'https://cdn.simpleicons.org/hbo/000000',
+      'Max': 'https://cdn.simpleicons.org/max/002BE7',
+      'Bilibili': 'https://cdn.simpleicons.org/bilibili/00A1D6'
+    };
+
+    const plataformas = (data?.data || []).map(p => ({
+      nombre: p.name,
+      link: p.url,
+      logo: LOGOS_CONOCIDOS[p.name] || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=92`
+    }));
+
+    // Filtramos duplicados por nombre
+    const unicas = plataformas.filter((p, index, self) =>
+      index === self.findIndex((t) => t.nombre === p.nombre)
+    );
+
+    return { 
+      plataformas: unicas,
+      link: null
+    };
+  } catch (error) {
+    console.warn('Error Jikan proveedores:', error.message);
+    return { plataformas: [], link: null };
   }
 }
 
