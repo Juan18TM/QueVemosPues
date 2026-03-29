@@ -113,29 +113,57 @@ export default function PanelDetalle({ detalle, similares = [], onClose, onClick
               )}
             </>
           ) : (
-            <>
-              <a
-                href={`https://www.google.com/search?q=d%C3%B3nde+ver+${encodeURIComponent(detalle.titulo)}+online`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="panel-streaming-no-disponible"
-              >
-                <Tv size={18} />
-                <span>No disponible en streaming — Buscar dónde verla</span>
-                <ExternalLink size={14} />
-              </a>
-              {detalle.tipo === 'anime' && (
+            <div className="panel-streaming-discovery">
+              <p className="discovery-texto">
+                No se encontraron plataformas de suscripción activas en tu región. Consulta disponibilidad global:
+              </p>
+              
+              <div className="discovery-botones">
+                {detalle.tipo === 'anime' ? (
+                  <>
+                    <a
+                      href={`https://www.livechart.me/search?q=${encodeURIComponent(detalle.titulo)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="boton-discovery livechart"
+                    >
+                      <Tv size={16} />
+                      Consultar en LiveChart.me
+                    </a>
+                    <a
+                      href={`https://myanimelist.net/anime.php?q=${encodeURIComponent(detalle.titulo)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="boton-discovery mal"
+                    >
+                      <ExternalLink size={16} />
+                      Ficha en MyAnimeList
+                    </a>
+                  </>
+                ) : (
+                  <a
+                    href={proveedores?.link || `https://www.justwatch.com/co/buscar?q=${encodeURIComponent(detalle.titulo)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="boton-discovery justwatch"
+                  >
+                    <Tv size={16} />
+                    Consultar en JustWatch
+                    <ExternalLink size={14} className="ms-auto" />
+                  </a>
+                )}
+                
                 <a
-                  href={`https://myanimelist.net/anime/${detalle.id}`}
+                  href={`https://www.google.com/search?q=donde+ver+${encodeURIComponent(detalle.titulo)}+online+streaming`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="panel-donde-btn mt-2"
+                  className="boton-discovery google"
                 >
-                  <ExternalLink size={16} />
-                  Ver Ficha en MyAnimeList
+                  <ExternalLink size={14} />
+                  Búsqueda general en Google
                 </a>
-              )}
-            </>
+              </div>
+            </div>
           )}
         </div>
 

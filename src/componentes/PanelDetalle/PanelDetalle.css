@@ -183,37 +183,89 @@
   padding: var(--espacio-sm) 0;
 }
 
-.panel-streaming-no-disponible {
-  display: flex;
-  align-items: center;
-  gap: var(--espacio-sm);
-  font-size: 0.8rem;
-  color: var(--texto-terciario);
-  text-decoration: none;
-  padding: var(--espacio-sm) var(--espacio-md);
-  border-radius: var(--radio-md);
-  border: 1px dashed var(--borde-sutil);
-  transition: all var(--transicion-rapida);
-}
-.panel-streaming-no-disponible:hover {
-  color: var(--acento-hover);
-  border-color: var(--acento-primario);
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.panel-donde-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--espacio-xs);
-  font-size: 0.8rem;
-  color: var(--acento-hover);
-  text-decoration: none;
-  transition: all var(--transicion-rapida);
+/* Estilos de Descubrimiento (Fallback de Streaming) */
+.panel-streaming-discovery {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--borde-sutil);
+  border-radius: var(--radio-lg);
+  padding: var(--espacio-md);
+  margin-top: var(--espacio-xs);
   margin-bottom: var(--espacio-md);
 }
-.panel-donde-btn:hover {
-  color: var(--acento-primario);
-  text-decoration: underline;
+
+.discovery-texto {
+  font-size: 0.8rem;
+  color: var(--texto-terciario);
+  line-height: 1.5;
+  margin-bottom: var(--espacio-md);
+}
+
+.discovery-botones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-sm);
+}
+
+.boton-discovery {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radio-md);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transicion-normal);
+  color: white;
+}
+
+.boton-discovery.justwatch {
+  background: linear-gradient(135deg, #1d1b24 0%, #3e3b4a 100%);
+  border: 1px solid #4e4b5a;
+}
+
+.boton-discovery.justwatch:hover {
+  background: linear-gradient(135deg, #2a2733 0%, #4e4b5a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.boton-discovery.livechart {
+  background: linear-gradient(135deg, #1d2b3a 0%, #2c4b69 100%);
+  border: 1px solid #3c5b79;
+}
+
+.boton-discovery.livechart:hover {
+  background: linear-gradient(135deg, #253b50 0%, #3c5b79 100%);
+  transform: translateY(-2px);
+}
+
+.boton-discovery.mal {
+  background: linear-gradient(135deg, #2e51a2 0%, #3d66c2 100%);
+  border: 1px solid #4d76d2;
+}
+
+.boton-discovery.mal:hover {
+  background: linear-gradient(135deg, #3d66c2 0%, #4d76d2 100%);
+  transform: translateY(-2px);
+}
+
+.boton-discovery.google {
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed rgba(255,255,255,0.1);
+  color: var(--texto-terciario);
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.boton-discovery.google:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  opacity: 1;
+}
+
+.ms-auto {
+  margin-left: auto;
 }
 
 .panel-fav-btn {

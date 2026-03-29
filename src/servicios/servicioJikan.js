@@ -118,6 +118,28 @@ export async function obtenerTopAnime(filtro = 'bypopularity', pagina = 1) {
   }
 }
 
+export async function obtenerAnimePorTipo(tipo = 'movie', pagina = 1) {
+  await esperarRateLimit();
+
+  try {
+    const { data } = await fetchConReintento('/anime', {
+      params: {
+        type: tipo,
+        order_by: 'score',
+        sort: 'desc',
+        page: pagina,
+        limit: 10,
+        sfw: true
+      }
+    });
+
+    return data.data.map(formatearAnime);
+  } catch (error) {
+    console.error('Error Jikan anime por tipo:', error);
+    return [];
+  }
+}
+
 export async function obtenerDetallesAnime(id) {
   await esperarRateLimit();
 

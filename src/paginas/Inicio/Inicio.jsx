@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Sparkles, Film, Tv, Zap, Star } from 'lucide-react';
+import { Search, Sparkles, Film, Tv, Zap, Star, TrendingUp } from 'lucide-react';
 import TarjetaContenido from '../../componentes/TarjetaContenido/TarjetaContenido';
 import PanelDetalle from '../../componentes/PanelDetalle/PanelDetalle';
-import { obtenerTendencias, buscarPorGeneros, obtenerDetalles, obtenerSimilares } from '../../servicios/servicioTMDB';
-import { obtenerTopAnime, obtenerDetallesAnime, obtenerRecomendacionesAnime } from '../../servicios/servicioJikan';
+import { obtenerTendencias, buscarPorGeneros, obtenerDetalles, obtenerSimilares, obtenerPopulares } from '../../servicios/servicioTMDB';
+import { obtenerTopAnime, obtenerDetallesAnime, obtenerRecomendacionesAnime, buscarAnimePorGeneros, obtenerAnimePorTipo } from '../../servicios/servicioJikan';
 import { useStore } from '../../estado/useStore';
 import './Inicio.css';
 
@@ -12,57 +12,133 @@ export default function Inicio() {
   const [searchParams] = useSearchParams();
   const tipoActual = searchParams.get('tipo') || 'pelicula';
   const { usuario } = useStore();
+  const contentRef = useRef(null);
   
-  const [seccion1, setSeccion1] = useState([]);
-  const [seccion2, setSeccion2] = useState([]);
-  const [titulo1, setTitulo1] = useState('Tendencias en Cine');
-  const [titulo2, setTitulo2] = useState('Películas de Acción');
+  const [secciones, setSecciones] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [cargandoMasId, setCargandoMasId] = useState(null);
   const [detalleActual, setDetalleActual] = useState(null);
   const [similares, setSimilares] = useState([]);
 
+  const scrollDown = () => {
+    const el = document.getElementById('contenido-principal');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
     cargarContenido();
-  }, [tipoActual]);
+    // Si hay un tipo en la URL, hacemos scroll inicial
+    if (searchParams.get('tipo')) {
+      setTimeout(() => {
+        const el = document.getElementById('contenido-principal');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 300); // Un poco más de tiempo para asegurar carga inicial
+    }
+  }, [searchParams]); // Dependencia en searchParams completa para detectar cambios /? -> /?tipo=pelicula
 
   async function cargarContenido() {
     setCargando(true);
-    setSeccion1([]);
-    setSeccion2([]);
+    setSecciones([]);
     
     try {
       if (tipoActual === 'anime') {
-        setTitulo1('Anime Popular');
-        setTitulo2('Anime Favorito');
-        const [s1, s2] = await Promise.all([
+        const [popular, favorite, movies, action, fantasy, romance] = await Promise.all([
           obtenerTopAnime('bypopularity', 1),
-          obtenerTopAnime('favorite', 1)
+          obtenerTopAnime('favorite', 1),
+          obtenerAnimePorTipo('movie', 1),
+          buscarAnimePorGeneros(['action']), 
+          buscarAnimePorGeneros(['fantasy']), 
+          buscarAnimePorGeneros(['romance'])
         ]);
-        setSeccion1(s1);
-        setSeccion2(s2);
+        
+        setSecciones([
+          { id: 'popular', titulo: 'Anime Popular', subtitulo: 'Lo que todos están viendo', items: popular, pagina: 1, tipoAccion: 'anime_top', param: 'bypopularity' },
+          { id: 'movies', titulo: 'Películas de Anime', subtitulo: 'Grandes historias en cine', items: movies, pagina: 1, tipoAccion: 'anime_tipo', param: 'movie' },
+          { id: 'favorite', titulo: 'Favoritos de la Comunidad', subtitulo: 'Los más amados', items: favorite, pagina: 1, tipoAccion: 'anime_top', param: 'favorite' },
+          { id: 'action', titulo: 'Acción y Shonen', subtitulo: 'Adrenalina pura', items: action, pagina: 1, tipoAccion: 'anime_genero', param: ['action'] },
+          { id: 'fantasy', titulo: 'Fantasía y Magia', subtitulo: 'Mundos paralelos', items: fantasy, pagina: 1, tipoAccion: 'anime_genero', param: ['fantasy'] },
+          { id: 'romance', titulo: 'Romance y Recuentos de la Vida', subtitulo: 'Historias del corazón', items: romance, pagina: 1, tipoAccion: 'anime_genero', param: ['romance'] }
+        ]);
       } else if (tipoActual === 'serie') {
-        setTitulo1('Tendencias en Series');
-        setTitulo2('Series de Drama');
-        const [s1, s2] = await Promise.all([
+        const [trending, popular, drama, scifi, mystery] = await Promise.all([
           obtenerTendencias('serie'),
-          buscarPorGeneros('serie', ['drama'])
+          obtenerPopulares('serie'),
+          buscarPorGeneros('serie', ['drama']),
+          buscarPorGeneros('serie', ['fantasy']),
+          buscarPorGeneros('serie', ['mystery'])
         ]);
-        setSeccion1(s1);
-        setSeccion2(s2);
+        
+        setSecciones([
+          { id: 'trending', titulo: 'Tendencias en Series', subtitulo: 'Novedades semanales', items: trending, pagina: 1, tipoAccion: 'trending', param: 'serie' },
+          { id: 'popular', titulo: 'Series Populares', subtitulo: 'Lo que todos están viendo', items: popular, pagina: 1, tipoAccion: 'popular', param: 'serie' },
+          { id: 'drama', titulo: 'Series de Drama', subtitulo: 'Historias intensas', items: drama, pagina: 1, tipoAccion: 'genero', param: ['drama'] },
+          { id: 'scifi', titulo: 'Ciencia Ficción y Fantasía', subtitulo: 'Explora lo desconocido', items: scifi, pagina: 1, tipoAccion: 'genero', param: ['fantasy'] },
+          { id: 'mystery', titulo: 'Misterio y Suspenso', subtitulo: '¿Qué pasará después?', items: mystery, pagina: 1, tipoAccion: 'genero', param: ['mystery'] }
+        ]);
       } else {
-        setTitulo1('Tendencias en Cine');
-        setTitulo2('Películas de Acción');
-        const [s1, s2] = await Promise.all([
+        const [trending, popular, action, horror, comedy] = await Promise.all([
           obtenerTendencias('pelicula'),
-          buscarPorGeneros('pelicula', ['action'])
+          obtenerPopulares('pelicula'),
+          buscarPorGeneros('pelicula', ['action']),
+          buscarPorGeneros('pelicula', ['horror']),
+          buscarPorGeneros('pelicula', ['comedy'])
         ]);
-        setSeccion1(s1);
-        setSeccion2(s2);
+        
+        setSecciones([
+          { id: 'trending', titulo: 'Tendencias en Cine', subtitulo: 'Películas destacadas', items: trending, pagina: 1, tipoAccion: 'trending', param: 'pelicula' },
+          { id: 'popular', titulo: 'Cine Popular', subtitulo: 'Las favoritas del público', items: popular, pagina: 1, tipoAccion: 'popular', param: 'pelicula' },
+          { id: 'action', titulo: 'Acción y Aventura', subtitulo: 'Mucha adrenalina', items: action, pagina: 1, tipoAccion: 'genero', param: ['action'] },
+          { id: 'horror', titulo: 'Terror y Suspenso', subtitulo: 'Noche de sustos', items: horror, pagina: 1, tipoAccion: 'genero', param: ['horror'] },
+          { id: 'comedy', titulo: 'Comedias', subtitulo: 'Diversión asegurada', items: comedy, pagina: 1, tipoAccion: 'genero', param: ['comedy'] }
+        ]);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setCargando(false);
+    }
+  }
+
+  async function cargarMasSeccion(id) {
+    const seccion = secciones.find(s => s.id === id);
+    if (!seccion || cargandoMasId) return;
+
+    setCargandoMasId(id);
+    const siguientePagina = seccion.pagina + 1;
+
+    try {
+      let nuevos = [];
+      switch (seccion.tipoAccion) {
+        case 'popular':
+          nuevos = await obtenerPopulares(seccion.param, siguientePagina);
+          break;
+        case 'genero':
+          nuevos = await buscarPorGeneros(tipoActual, seccion.param, siguientePagina);
+          break;
+        case 'anime_top':
+          nuevos = await obtenerTopAnime(seccion.param, siguientePagina);
+          break;
+        case 'anime_tipo':
+          nuevos = await obtenerAnimePorTipo(seccion.param, siguientePagina);
+          break;
+        case 'anime_genero':
+          nuevos = await buscarAnimePorGeneros(seccion.param, siguientePagina);
+          break;
+        default:
+          nuevos = [];
+      }
+
+      if (nuevos.length > 0) {
+        setSecciones(prev => prev.map(s => 
+          s.id === id 
+            ? { ...s, items: [...s.items, ...nuevos], pagina: siguientePagina }
+            : s
+        ));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCargandoMasId(null);
     }
   }
 
@@ -127,15 +203,15 @@ export default function Inicio() {
           </div>
 
           <div className="hero-categorias">
-            <Link to="/?tipo=pelicula" className="hero-categoria">
+            <Link to="/?tipo=pelicula" className="hero-categoria" onClick={scrollDown}>
               <div className="hero-categoria-icono"><Film size={24} /></div>
               <span>MOVIES</span>
             </Link>
-            <Link to="/?tipo=serie" className="hero-categoria">
+            <Link to="/?tipo=serie" className="hero-categoria" onClick={scrollDown}>
               <div className="hero-categoria-icono"><Tv size={24} /></div>
               <span>SERIES</span>
             </Link>
-            <Link to="/?tipo=anime" className="hero-categoria">
+            <Link to="/?tipo=anime" className="hero-categoria" onClick={scrollDown}>
               <div className="hero-categoria-icono"><Zap size={24} /></div>
               <span>ANIME</span>
             </Link>
@@ -144,58 +220,51 @@ export default function Inicio() {
       </section>
 
       {/* Contenido Principal */}
-      <div className="inicio-body contenedor">
+      <div id="contenido-principal" className="inicio-body contenedor" ref={contentRef}>
         <div className={`inicio-layout ${detalleActual ? 'con-detalle' : ''}`}>
           <div className="inicio-principal">
-            {/* Sección 1 */}
-            <section className="seccion-contenido">
-              <div className="seccion-header">
-                <div>
-                  <h2 className="seccion-titulo">{titulo1}</h2>
-                  <p className="seccion-subtitulo">Lo más destacado del momento.</p>
-                </div>
-              </div>
+            {cargando ? (
+              <div className="spinner-contenedor"><div className="spinner" /></div>
+            ) : (
+              secciones.map((seccion) => (
+                <section key={seccion.id} className="seccion-contenido">
+                  <div className="seccion-header">
+                    <div>
+                      <h2 className="seccion-titulo">{seccion.titulo}</h2>
+                      <p className="seccion-subtitulo">{seccion.subtitulo}</p>
+                    </div>
+                  </div>
 
-              {cargando ? (
-                <div className="spinner-contenedor"><div className="spinner" /></div>
-              ) : (
-                <div className="grid-contenido animar-escalonado">
-                  {seccion1.slice(0, 10).map((item, i) => (
-                    <TarjetaContenido
-                      key={`s1-${item.id}`}
-                      contenido={item}
-                      onClick={abrirDetalle}
-                      indice={i}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+                  <div className="grid-contenido animar-escalonado">
+                    {seccion.items.map((item, i) => (
+                      <TarjetaContenido
+                        key={`${seccion.id}-${item.id}`}
+                        contenido={item}
+                        onClick={abrirDetalle}
+                        indice={i}
+                      />
+                    ))}
+                  </div>
 
-            {/* Sección 2 */}
-            <section className="seccion-contenido">
-              <div className="seccion-header">
-                <div>
-                  <h2 className="seccion-titulo">{titulo2}</h2>
-                  <p className="seccion-subtitulo">Explora más opciones increíbles.</p>
-                </div>
-              </div>
-
-              {cargando ? (
-                <div className="spinner-contenedor"><div className="spinner" /></div>
-              ) : (
-                <div className="grid-contenido animar-escalonado">
-                  {seccion2.slice(0, 10).map((item, i) => (
-                    <TarjetaContenido
-                      key={`s2-${item.id}`}
-                      contenido={item}
-                      onClick={abrirDetalle}
-                      indice={i}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+                  {/* Botón Ver Más Local */}
+                  {seccion.items.length >= 10 && seccion.tipoAccion !== 'trending' && (
+                    <div className="seccion-footer-vermas">
+                      <button 
+                        className="boton-vermas-lineal"
+                        onClick={() => cargarMasSeccion(seccion.id)}
+                        disabled={cargandoMasId === seccion.id}
+                      >
+                        {cargandoMasId === seccion.id ? (
+                          <div className="spinner-mini" />
+                        ) : (
+                          <>Cargar más en {seccion.titulo}</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </section>
+              ))
+            )}
 
             {/* CTA */}
             <section className="cta-seccion" key={usuario ? 'cta-in' : 'cta-out'}>

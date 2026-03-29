@@ -92,6 +92,20 @@ export async function obtenerTendencias(tipo = 'all') {
   }
 }
 
+export async function obtenerPopulares(tipo = 'pelicula', pagina = 1) {
+  const endpoint = tipo === 'pelicula' ? '/movie/popular' : '/tv/popular';
+
+  try {
+    const { data } = await tmdb.get(endpoint, {
+      params: { page: pagina }
+    });
+    return data.results.map(item => formatearResultado(item, tipo));
+  } catch (error) {
+    console.error('Error TMDB populares:', error);
+    return [];
+  }
+}
+
 export async function obtenerDetalles(id, tipo = 'pelicula') {
   const mediaType = tipo === 'pelicula' ? 'movie' : 'tv';
 

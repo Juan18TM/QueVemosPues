@@ -63,9 +63,6 @@ export default function TarjetaContenido({ contenido, onClick, indice = 0 }) {
         </div>
 
         <div className="tarjeta-badge-grupo">
-          <span className={`etiqueta ${etiquetaTipo[contenido.tipo] || ''}`}>
-            {nombreTipo[contenido.tipo] || contenido.tipo}
-          </span>
           {contenido.rating && contenido.rating !== 'N/A' && (
             <span className="tarjeta-rating">
               <Star size={12} fill="currentColor" />
