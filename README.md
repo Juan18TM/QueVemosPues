@@ -8,7 +8,7 @@ Gracias a un poderoso motor de **Inteligencia Artificial Multi-Modelo**, la plat
 
 ## ✨ Características Principales
 
-- 🧠 **Buscador AI "Smart Search":** No busques por título. Busca por concepto, ej: _"Quiero una película tipo Interstellar"_.
+- 🧠 **Buscador AI "Smart Search":** No busques por título. Busca por concepto, ej: _"recomiendame peliculas como el conjuro" etc_.
 - ⚡ **Orquestador Multi-IA en Cascada:** Garantiza latencia ultra-baja y 100% de disponibilidad al usar una jerarquía de inteligencias:
   1.  **Groq (Llama-3.3-70b-versatile):** Procesamiento instantáneo a velocidad LPU de 0.2 segundos.
   2.  **Google Gemini (1.5 Flash):** Respaldo de razonamiento profundo y latencia nativa multimodelo.
