@@ -5,11 +5,13 @@ import TarjetaContenido from '../../componentes/TarjetaContenido/TarjetaContenid
 import PanelDetalle from '../../componentes/PanelDetalle/PanelDetalle';
 import { obtenerTendencias, buscarPorGeneros, obtenerDetalles, obtenerSimilares } from '../../servicios/servicioTMDB';
 import { obtenerTopAnime, obtenerDetallesAnime, obtenerRecomendacionesAnime } from '../../servicios/servicioJikan';
+import { useStore } from '../../estado/useStore';
 import './Inicio.css';
 
 export default function Inicio() {
   const [searchParams] = useSearchParams();
   const tipoActual = searchParams.get('tipo') || 'pelicula';
+  const { usuario } = useStore();
   
   const [seccion1, setSeccion1] = useState([]);
   const [seccion2, setSeccion2] = useState([]);
@@ -196,16 +198,22 @@ export default function Inicio() {
             </section>
 
             {/* CTA */}
-            <section className="cta-seccion">
+            <section className="cta-seccion" key={usuario ? 'cta-in' : 'cta-out'}>
               <div className="cta-contenido">
                 <h2 className="cta-titulo">¿No sabes qué ver hoy?</h2>
                 <p className="cta-texto">
-                  Únete a miles de cinéfilos y deja que nuestra IA cure tu fin de semana.
-                  Crea listas personalizadas, sigue a tus amigos y nunca te pierdas un estreno.
+                  {usuario
+                    ? 'Deja que nuestra IA te recomiende algo perfecto para tu estado de ánimo.'
+                    : 'Únete a miles de cinéfilos y deja que nuestra IA cure tu fin de semana. Crea listas personalizadas, sigue a tus amigos y nunca te pierdas un estreno.'
+                  }
                 </p>
                 <div className="cta-botones">
-                  <Link to="/registro" className="boton-primario">Crear Cuenta Gratis</Link>
-                  <Link to="/buscar" className="boton-secundario">Explorar como Invitado</Link>
+                  <Link to={usuario ? '/buscar' : '/registro'} className="boton-primario">
+                    {usuario ? 'Buscar con IA' : 'Crear Cuenta Gratis'}
+                  </Link>
+                  <Link to={usuario ? '/favoritos' : '/buscar'} className="boton-secundario">
+                    {usuario ? 'Mis Favoritos' : 'Explorar como Invitado'}
+                  </Link>
                 </div>
               </div>
             </section>

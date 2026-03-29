@@ -81,14 +81,42 @@ export default function Buscar() {
         const itemsRecomendados = (await Promise.all(promesas)).filter(Boolean);
         
         let extras = [];
-        // Rellenar con sugerencias similares si se encontró al menos uno
-        if (itemsRecomendados.length > 0) {
-          const primerId = itemsRecomendados[0].id;
+        
+        // Detección local súper robusta del título base (por si la IA pequeña olvida parsearlo en el JSON)
+        let tituloReferenciaLocal = null;
+        const textoBusqueda = texto.toLowerCase();
+        const matchComo = textoBusqueda.match(/(?:como|parecid[oa]s? a|similar a|parecido? a|estilo)\s+([^,.]+)/);
+        if (matchComo) {
+          tituloReferenciaLocal = matchComo[1].trim();
+        }
+        
+        const referenciaFinal = analisis.titulo_referencia || tituloReferenciaLocal;
+
+        // Determinar de qué obra vamos a sacar los "similares" de relleno
+        let idReferencia = null;
+        if (referenciaFinal) {
+          console.log('Fijando título de referencia estricto:', referenciaFinal);
+          const resRef = analisis.tipo === 'anime' 
+            ? await buscarAnimePorTexto(referenciaFinal)
+            : await buscarPorTexto(referenciaFinal, analisis.tipo);
+          
+          if (resRef.length > 0) idReferencia = resRef[0].id;
+        }
+
+        // Si no hubo título de referencia explícito, usar la primera recomendación de la IA
+        if (!idReferencia && itemsRecomendados.length > 0) {
+          idReferencia = itemsRecomendados[0].id;
+        }
+
+        // Rellenar con sugerencias similares oficiales de TMDB (esto asegura que vengan secuelas y spin-offs directamente amarrados)
+        if (idReferencia) {
           if (analisis.tipo === 'anime') {
-            extras = await obtenerRecomendacionesAnime(primerId);
+            extras = await obtenerRecomendacionesAnime(idReferencia);
           } else {
-            extras = await obtenerSimilares(primerId, analisis.tipo);
+            extras = await obtenerSimilares(idReferencia, analisis.tipo);
           }
+          // Marcar los extras como protegidos para que no sean borrados si tienen rating 0.0 (ej: Ballerina que no ha salido)
+          extras = extras.map(e => ({ ...e, esSugerenciaOficialTMDB: true }));
         }
         
         const mapa = new Map();
@@ -112,6 +140,7 @@ export default function Buscar() {
             resultadosNuevos = await obtenerSimilares(obraReferencia.id, analisis.tipo);
           }
         }
+        resultadosNuevos = resultadosNuevos.map(e => ({ ...e, esSugerenciaOficialTMDB: true }));
       }
 
       // Si no hay títulos de recomendación o similares, buscar por géneros/texto
@@ -137,6 +166,21 @@ export default function Buscar() {
           resultadosNuevos = Array.from(mapa.values());
         }
       }
+
+      // Filtrar resultados sin rating (0.0) que suelen ser relleno irrelevante de TMDB
+      // Excepción: NUNCA filtramos los títulos que la IA recomendó explícitamente ni los similares forzados de TMDB
+      const titulosRecomendados = new Set((analisis.titulos_recomendados || []).map(t => t.toLowerCase()));
+      
+      resultadosNuevos = resultadosNuevos.filter(r => {
+        const esRecomendadoPorIA = [...titulosRecomendados].some(tituloIA => 
+          tituloIA.includes(r.titulo.toLowerCase()) || r.titulo.toLowerCase().includes(tituloIA)
+        );
+        
+        if (esRecomendadoPorIA || r.esSugerenciaOficialTMDB) return true;
+        
+        const rating = parseFloat(r.rating);
+        return !isNaN(rating) && rating > 0;
+      });
 
       // Ordenar resultados de más recientes a más antiguos (por año)
       resultadosNuevos.sort((a, b) => {
