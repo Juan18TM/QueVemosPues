@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const API_KEY_OPENROUTER = import.meta.env.VITE_OPENROUTER_API_KEY;
+const API_KEY_GROQ = import.meta.env.VITE_GROQ_API_KEY;
+const API_KEY_GEMINI = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_STUDIO;
 const MODELOS_GRATUITOS = [
   
   'meta-llama/llama-3-8b-instruct',
@@ -31,8 +33,8 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     return cacheIA.get(textoLimpio);
   }
 
-  if (!API_KEY) {
-    console.warn('API Key de OpenRouter no configurada. Usando fallback local.');
+  if (!API_KEY_OPENROUTER && !API_KEY_GROQ && !API_KEY_GEMINI) {
+    console.warn('API Keys (OpenRouter, Groq, Gemini) no configuradas. Usando fallback local.');
     return fallbackLocal(textoLimpio);
   }
 
@@ -54,67 +56,118 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     2. "generos": lista de géneros en español.
     3. "palabras_clave": términos para búsqueda textual.
     4. "titulo_referencia": Si el usuario menciona un título, extrae SOLO el nombre corregido. Si no, null.
-    5. "mensaje": Un breve mensaje de IA al usuario. SÚPER IMPORTANTE: NO uses comillas dobles (") dentro del mensaje, usa simples (').
+    5. "mensaje": Un breve mensaje de la IA. NO uses NINGUNA comilla (ni simple ni doble) dentro del texto del mensaje para evitar corromper el JSON.
     6. "titulos_recomendados": Un arreglo con exactamente 10 títulos. SÚPER IMPORTANTE: Deben ser EXTREMADAMENTE RELEVANTES a la solicitud original. Si el usuario busca algo como otra obra o una vibra específica, prioriza obligatoriamente secuelas, spin-offs directos de ese mismo universo, o producciones modernas que compartan exactamente el mismo tono, atmósfera y género de acción/estilo. No des resultados genéricos o antiguos si buscan algo moderno. Nombres muy exactos.
-    7. Responde SOLO el JSON puramente, asegurando que tiene un formato válido sin errores de sintaxis.
+    7. Responde ÚNICAMENTE un JSON válido. Todas las claves y valores string deben estar rodeadas por comillas dobles estrictamente.
   `;
 
-  try {
-    const modelo = MODELOS_GRATUITOS[indiceActual];
-    // console.log(`Intentando con modelo: ${modelo}`); // Opcional para debug
+  let con = null;
 
-    const respuesta = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: modelo,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://quevemospues.com',
-          'X-Title': 'QueVemosPues'
+  // ORQUESTADOR DE CASCADA
+
+  // 1. Intentar con GROQ (Rapidez extrema)
+  if (API_KEY_GROQ && !con) {
+    try {
+      console.log('Orquestador: Consultando a Groq (llama-3.3-70b-versatile)...');
+      const resGroq = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${API_KEY_GROQ}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }
-    );
+      );
+      con = resGroq.data.choices[0].message.content;
+    } catch (error) {
+      console.warn('Groq falló, saltando a Gemini...', error.response?.status);
+    }
+  }
 
-    let con = respuesta.data.choices[0].message.content;
-    
-    // Extraer solo la parte que parece JSON por si la IA agregó texto alrededor
+  // 2. Intentar con GOOGLE GEMINI (Inteligencia profunda)
+  if (API_KEY_GEMINI && !con) {
+    try {
+      console.log('Orquestador: Consultando a Google Gemini...');
+      const resGemini = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY_GEMINI}`,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        },
+        {
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      con = resGemini.data.candidates[0].content.parts[0].text;
+    } catch (error) {
+      console.warn('Google Gemini falló, saltando a OpenRouter...', error.response?.status);
+    }
+  }
+
+  // 3. Intentar con OPENROUTER (La Ruleta Clásica)
+  if (API_KEY_OPENROUTER && !con) {
+    try {
+      const modelo = MODELOS_GRATUITOS[indiceActual];
+      console.log(`Orquestador: Consultando a OpenRouter (${modelo})...`);
+
+      const resOpenRouter = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: modelo,
+          messages: [{ role: 'user', content: prompt }]
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${API_KEY_OPENROUTER}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://quevemospues.com',
+            'X-Title': 'QueVemosPues'
+          }
+        }
+      );
+      con = resOpenRouter.data.choices[0].message.content;
+    } catch (error) {
+      const status = error.response?.status;
+      if ((status === 429 || status === 404 || status === 502) && reintentos < MODELOS_GRATUITOS.length - 1) {
+        indiceActual = (indiceActual + 1) % MODELOS_GRATUITOS.length;
+        console.warn(`OpenRouter agotado. Rotando modelo...`);
+        return analizarTextoConIA(texto, reintentos + 1);
+      }
+      console.warn('OpenRouter falló definitivamente.', error.message);
+    }
+  }
+
+  // Si a pesar de los 3 proveedores de talla mundial no hubo respuesta, usar Local
+  if (!con) {
+    console.warn('Todos los proveedores fallaron. Usando fallback local.');
+    return fallbackLocal(texto);
+  }
+
+  // Procesar Resultado JSON
+  try {
     const matchJson = con.match(/\{[\s\S]*\}/);
     if (matchJson) {
       con = matchJson[0];
     }
-    const resultadoPrseado = JSON.parse(con);
+    const resultadoParseado = JSON.parse(con);
     
-    // Guardar en caché antes de retornar
-    cacheIA.set(textoLimpio, resultadoPrseado);
-    return resultadoPrseado;
-  } catch (error) {
-    const status = error.response?.status;
-    const esErrorDeParseoJSON = error instanceof SyntaxError;
-    const esErrorRotable = status === 429 || status === 404 || status === 502 || esErrorDeParseoJSON;
-
-    if (esErrorRotable && reintentos < MODELOS_GRATUITOS.length - 1) {
-      // Rotar al siguiente modelo y reintentar
+    cacheIA.set(textoLimpio, resultadoParseado);
+    return resultadoParseado;
+  } catch (parseError) {
+    console.error('Error de parseo JSON desde el Orquestador:', parseError.message);
+    
+    // Si hubo error de parseo, rotamos y forzamos un reintento a través de OpenRouter
+    if (reintentos < MODELOS_GRATUITOS.length) {
+      console.warn('Rotando proveedor/modelo por error de JSON y reintentando...');
       indiceActual = (indiceActual + 1) % MODELOS_GRATUITOS.length;
-      console.warn(`Error en modelo (Parseo/HTTP). Rotando a: ${MODELOS_GRATUITOS[indiceActual]}`);
-      
-      // Si el error es 429, hacer un pequeño retraso antes de reintentar
-      if (status === 429) {
-        await new Promise(res => setTimeout(res, 800));
-      }
-      
-      return analizarTextoConIA(texto, reintentos + 1); // Usar reintentos como contador de modelos probados
+      return analizarTextoConIA(texto, reintentos + 1);
     }
     
-    if (esErrorRotable) {
-      console.warn('Todos los modelos agotados o no disponibles. Usando fallback local.');
-    } else {
-      console.error('Error en OpenRouter:', error.response?.data || error.message);
-    }
     return fallbackLocal(texto);
   }
 }
