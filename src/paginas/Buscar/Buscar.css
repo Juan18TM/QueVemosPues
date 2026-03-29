@@ -159,6 +159,20 @@
   font-style: italic;
 }
 
+.buscar-resultados-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-xl);
+}
+
+.buscar-ver-mas-contenedor {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--espacio-lg) 0;
+  margin-top: var(--espacio-sm);
+}
+
 @media (max-width: 1024px) {
   .buscar-layout.con-detalle {
     flex-direction: column;

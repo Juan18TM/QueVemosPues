@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Sparkles, Film, Tv, Zap, Star, TrendingUp } from 'lucide-react';
 import TarjetaContenido from '../../componentes/TarjetaContenido/TarjetaContenido';
+import SkeletonTarjeta from '../../componentes/SkeletonTarjeta/SkeletonTarjeta';
 import PanelDetalle from '../../componentes/PanelDetalle/PanelDetalle';
 import { obtenerTendencias, buscarPorGeneros, obtenerDetalles, obtenerSimilares, obtenerPopulares } from '../../servicios/servicioTMDB';
 import { obtenerTopAnime, obtenerDetallesAnime, obtenerRecomendacionesAnime, buscarAnimePorGeneros, obtenerAnimePorTipo } from '../../servicios/servicioJikan';
@@ -103,12 +104,16 @@ export default function Inicio() {
     const seccion = secciones.find(s => s.id === id);
     if (!seccion || cargandoMasId) return;
 
+    const startTime = Date.now();
     setCargandoMasId(id);
     const siguientePagina = seccion.pagina + 1;
 
     try {
       let nuevos = [];
       switch (seccion.tipoAccion) {
+        case 'trending':
+          nuevos = await obtenerTendencias(seccion.param, siguientePagina);
+          break;
         case 'popular':
           nuevos = await obtenerPopulares(seccion.param, siguientePagina);
           break;
@@ -128,16 +133,32 @@ export default function Inicio() {
           nuevos = [];
       }
 
-      if (nuevos.length > 0) {
-        setSecciones(prev => prev.map(s => 
-          s.id === id 
-            ? { ...s, items: [...s.items, ...nuevos], pagina: siguientePagina }
-            : s
-        ));
-      }
+      // UNION ABSOLUTA: Usamos un Map para garantizar unicidad total
+      const mapaTotal = new Map();
+      seccion.items.forEach(item => mapaTotal.set(`${item.tipo}-${item.id}`, item));
+      nuevos.forEach(item => {
+        const key = `${item.tipo}-${item.id}`;
+        if (!mapaTotal.has(key)) mapaTotal.set(key, item);
+      });
+
+      const listaFinal = Array.from(mapaTotal.values());
+      
+      // ESPERA MINIMA (800ms) para que el Shimmer luzca
+      const elapsed = Date.now() - startTime;
+      const waitTime = Math.max(0, 800 - elapsed);
+
+      setTimeout(() => {
+        setSecciones(prev => prev.map(s => {
+          if (s.id === id) {
+            return { ...s, items: listaFinal, pagina: siguientePagina };
+          }
+          return s;
+        }));
+        setCargandoMasId(null);
+      }, waitTime);
+
     } catch (err) {
       console.error(err);
-    } finally {
       setCargandoMasId(null);
     }
   }
@@ -235,7 +256,7 @@ export default function Inicio() {
                     </div>
                   </div>
 
-                  <div className="grid-contenido animar-escalonado">
+                  <div className="grid-contenido">
                     {seccion.items.map((item, i) => (
                       <TarjetaContenido
                         key={`${seccion.id}-${item.id}`}
@@ -244,21 +265,31 @@ export default function Inicio() {
                         indice={i}
                       />
                     ))}
+                    {/* Skeletons al cargar más en la sección */}
+                    {cargandoMasId === seccion.id && [...Array(4)].map((_, i) => (
+                      <SkeletonTarjeta key={`skel-ini-${seccion.id}-${i}`} />
+                    ))}
                   </div>
 
-                  {/* Botón Ver Más Local */}
+                  {/* Botón Ver Más Local con estructura estable */}
                   {seccion.items.length >= 10 && seccion.tipoAccion !== 'trending' && (
                     <div className="seccion-footer-vermas">
                       <button 
                         className="boton-vermas-lineal"
                         onClick={() => cargarMasSeccion(seccion.id)}
                         disabled={cargandoMasId === seccion.id}
+                        style={{ position: 'relative' }}
                       >
-                        {cargandoMasId === seccion.id ? (
-                          <div className="spinner-mini" />
-                        ) : (
-                          <>Cargar más en {seccion.titulo}</>
-                        )}
+                        <span style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          opacity: cargandoMasId === seccion.id ? 0.7 : 1,
+                          transition: 'opacity 0.2s'
+                        }}>
+                          {cargandoMasId === seccion.id && <div className="spinner-mini" />}
+                          <span>{cargandoMasId === seccion.id ? 'Cargando...' : `Cargar más en ${seccion.titulo}`}</span>
+                        </span>
                       </button>
                     </div>
                   )}
