@@ -186,7 +186,7 @@ export default function Inicio() {
           <Link to="/buscar" className="hero-buscador">
             <Search size={18} className="hero-buscador-icono" />
             <span className="hero-buscador-placeholder">
-              Busca algo como Interstellar o un anime romántico
+              Pregunta: "Recomiendame películas como..." o "Animes de..."
             </span>
             <span className="hero-buscador-boton">
               <Sparkles size={14} /> Magic
