@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="footer-contenido contenedor">
         <div className="footer-izquierda">
           <span className="footer-logo">QueVemosPues</span>
-          <span className="footer-copy">© 2024 QueVemosPues. Powered by AI Intelligence.</span>
+          <span className="footer-copy">© 2026 QueVemosPues. Powered by AI Intelligence.</span>
         </div>
         <div className="footer-enlaces">
           <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB API</a>
