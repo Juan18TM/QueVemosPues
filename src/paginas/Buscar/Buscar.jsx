@@ -4,7 +4,7 @@ import { Search, Sparkles, Loader } from 'lucide-react';
 import TarjetaContenido from '../../componentes/TarjetaContenido/TarjetaContenido';
 import SkeletonTarjeta from '../../componentes/SkeletonTarjeta/SkeletonTarjeta';
 import PanelDetalle from '../../componentes/PanelDetalle/PanelDetalle';
-import { analizarTextoConIA } from '../../servicios/servicioIA';
+import { analizarTextoConIA, obtenerMasRecomendacionesIA } from '../../servicios/servicioIA';
 import { buscarPorGeneros, buscarPorTexto, obtenerDetalles, obtenerSimilares } from '../../servicios/servicioTMDB';
 import { buscarAnimePorGeneros, buscarAnimePorTexto, obtenerDetallesAnime, obtenerRecomendacionesAnime } from '../../servicios/servicioJikan';
 import { useStore } from '../../estado/useStore';
@@ -43,16 +43,20 @@ export default function Buscar() {
     }
   }, [searchParams]);
 
-  async function realizarBusqueda(texto) {
+  const realizarBusqueda = async (texto, tipoForzado = null) => {
+    if (!texto.trim()) return;
     const startTime = Date.now();
+
     setCargando(true);
     setAnalizando(true);
-    setAnalisisIA(null);
+    setResultados([]);
     setPagina(1);
+    setIdReferenciaActual(null);
+    setFiltroTipo(tipoForzado || 'todo');
 
     try {
-      // Paso 1: Analizar con IA
-      const analisis = await analizarTextoConIA(texto);
+      // Paso 1: Analizar intención con IA (Pasando el tipo forzado si existe)
+      const analisis = await analizarTextoConIA(texto, 1, tipoForzado);
       setAnalisisIA(analisis);
       setAnalizando(false);
 
@@ -65,18 +69,26 @@ export default function Buscar() {
       let resultadosNuevos = [];
       let idReferencia = null;
 
-      // NUEVO: Buscar los títulos específicos recomendados por la IA
+      // MODO ESTRICTO: Solo las primeras 10 recomendaciones de la IA para la página 1
       if (analisis.titulos_recomendados && analisis.titulos_recomendados.length > 0) {
-        console.log('Buscando títulos recomendados por la IA:', analisis.titulos_recomendados);
+        console.log('Buscando las primeras 10 de 20 recomendaciones TOP de la IA...');
         
-        const promesas = analisis.titulos_recomendados.map(async (titulo) => {
+        // Cargamos solo los primeros 10 para la vista inicial
+        const titulosIniciales = analisis.titulos_recomendados.slice(0, 10);
+        
+        const promesas = titulosIniciales.map(async (titulo) => {
           try {
+            const detalleIA = (analisis.recomendaciones_detalle || []).find(d => 
+              d.titulo.toLowerCase().includes(titulo.toLowerCase()) || 
+              titulo.toLowerCase().includes(d.titulo.toLowerCase())
+            );
+
             if (analisis.tipo === 'anime') {
               const res = await buscarAnimePorTexto(titulo);
-              return res.length > 0 ? res[0] : null;
+              return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
             } else {
               const res = await buscarPorTexto(titulo, analisis.tipo);
-              return res.length > 0 ? res[0] : null;
+              return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
             }
           } catch (e) {
             return null;
@@ -85,49 +97,14 @@ export default function Buscar() {
         
         const itemsRecomendados = (await Promise.all(promesas)).filter(Boolean);
         
-        let extras = [];
-        
-        // Detección local súper robusta del título base (por si la IA pequeña olvida parsearlo en el JSON)
-        let tituloReferenciaLocal = null;
-        const textoBusqueda = texto.toLowerCase();
-        const matchComo = textoBusqueda.match(/(?:como|parecid[oa]s? a|similar a|parecido? a|estilo)\s+([^,.]+)/);
-        if (matchComo) {
-          tituloReferenciaLocal = matchComo[1].trim();
-        }
-        
-        const referenciaFinal = analisis.titulo_referencia || tituloReferenciaLocal;
-
-        // Determinar de qué obra vamos a sacar los "similares" de relleno
-        if (referenciaFinal) {
-          console.log('Fijando título de referencia estricto:', referenciaFinal);
-          const resRef = analisis.tipo === 'anime' 
-            ? await buscarAnimePorTexto(referenciaFinal)
-            : await buscarPorTexto(referenciaFinal, analisis.tipo);
-          
-          if (resRef.length > 0) idReferencia = resRef[0].id;
-        }
-
-        // Si no hubo título de referencia explícito, usar la primera recomendación de la IA
-        if (!idReferencia && itemsRecomendados.length > 0) {
-          idReferencia = itemsRecomendados[0].id;
-        }
-
-        // Rellenar con sugerencias similares oficiales de TMDB (esto asegura que vengan secuelas y spin-offs directamente amarrados)
-        if (idReferencia) {
-          if (analisis.tipo === 'anime') {
-            extras = await obtenerRecomendacionesAnime(idReferencia);
-          } else {
-            extras = await obtenerSimilares(idReferencia, analisis.tipo);
-          }
-          // Marcar los extras como protegidos para que no sean borrados si tienen rating 0.0 (ej: Ballerina que no ha salido)
-          extras = extras.map(e => ({ ...e, esSugerenciaOficialTMDB: true }));
-        }
-        
         const mapa = new Map();
-        [...itemsRecomendados, ...extras].forEach(r => mapa.set(`${r.tipo}-${r.id}`, r));
+        itemsRecomendados.forEach(r => mapa.set(`${r.tipo}-${r.id}`, r));
         resultadosNuevos = Array.from(mapa.values());
         
+        if (resultadosNuevos.length > 0) idReferencia = resultadosNuevos[0].id;
+
       } else if (analisis.titulo_referencia) {
+        // Fallback: Si no hay array, pero hay título de referencia
         console.log('Buscando similitudes para:', analisis.titulo_referencia);
         let obraReferencia = null;
         
@@ -148,10 +125,11 @@ export default function Buscar() {
         resultadosNuevos = resultadosNuevos.map(e => ({ ...e, esSugerenciaOficialTMDB: true }));
       }
 
-      // Si no hay títulos de recomendación o similares, buscar por géneros/texto
+      // Si no hay títulos de recomendación o similares, buscar por géneros/busqueda_optimizada
       if (resultadosNuevos.length === 0) {
+        const busquedaTexto = analisis.busqueda_optimizada || analisis.palabras_clave.join(' ') || texto;
+        
         if (analisis.tipo === 'anime') {
-          const busquedaTexto = analisis.palabras_clave.join(' ') || texto;
           const promesas = [buscarAnimePorTexto(busquedaTexto)];
           if (analisis.generos.length > 0) promesas.push(buscarAnimePorGeneros(analisis.generos));
           
@@ -161,7 +139,6 @@ export default function Buscar() {
           resultadosNuevos = Array.from(mapa.values());
         } else {
           const tipo = analisis.tipo;
-          const busquedaTexto = analisis.palabras_clave.join(' ') || texto;
           const promesas = [buscarPorTexto(busquedaTexto, tipo)];
           if (analisis.generos.length > 0) promesas.push(buscarPorGeneros(tipo, analisis.generos));
 
@@ -172,16 +149,10 @@ export default function Buscar() {
         }
       }
 
-      // Filtrar resultados sin rating (0.0) que suelen ser relleno irrelevante de TMDB
-      // Excepción: NUNCA filtramos los títulos que la IA recomendó explícitamente ni los similares forzados de TMDB
-      const titulosRecomendados = new Set((analisis.titulos_recomendados || []).map(t => t.toLowerCase()));
-      
+      // Filtrar por calidad, EXCEPTUANDO lo que la IA recomendó específicamente
+      // (Ballerina tiene rating 0.0 y DEBE salir si la IA la propuso)
       resultadosNuevos = resultadosNuevos.filter(r => {
-        const esRecomendadoPorIA = [...titulosRecomendados].some(tituloIA => 
-          tituloIA.includes(r.titulo.toLowerCase()) || r.titulo.toLowerCase().includes(tituloIA)
-        );
-        
-        if (esRecomendadoPorIA || r.esSugerenciaOficialTMDB) return true;
+        if (r.esRecomendadoIA || r.esSugerenciaOficialTMDB) return true;
         
         const rating = parseFloat(r.rating);
         return !isNaN(rating) && rating > 0;
@@ -229,31 +200,77 @@ export default function Buscar() {
     try {
       let nuevos = [];
       
-      // MODO 1: Persistencia de Similitud (idReferenciaActual)
-      if (idReferenciaActual) {
+      // PRIORIDAD 1: Si hay más títulos en la lista inicial de la IA (del 11 al 20)
+      if (analisisIA?.titulos_recomendados && analisisIA.titulos_recomendados.length > resultados.length && pagina === 1) {
+        console.log('Cargando la segunda tanda de 10 recomendaciones de la IA...');
+        const titulosSiguientes = analisisIA.titulos_recomendados.slice(10, 20);
+        
+        const promesas = titulosSiguientes.map(async (titulo) => {
+          try {
+            const detalleIA = (analisisIA.recomendaciones_detalle || []).find(d => 
+              d.titulo.toLowerCase().includes(titulo.toLowerCase()) || 
+              titulo.toLowerCase().includes(d.titulo.toLowerCase())
+            );
+
+            if (analisisIA.tipo === 'anime') {
+              const res = await buscarAnimePorTexto(titulo);
+              return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
+            } else {
+              const res = await buscarPorTexto(titulo, analisisIA.tipo);
+              return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
+            }
+          } catch (e) { return null; }
+        });
+        nuevos = (await Promise.all(promesas)).filter(Boolean);
+      } 
+      // PRIORIDAD 2: MODO DEEP DISCOVERY (Solo si ya agotamos los 20 iniciales de la IA)
+      else if (analisisIA?.titulos_recomendados && pagina >= 2) {
+        console.log('--- ACTIVANDO DEEP DISCOVERY IA ---');
+        const titulosVistos = resultados.map(r => r.titulo);
+        const extension = await obtenerMasRecomendacionesIA(consulta, titulosVistos, analisisIA.tipo);
+        
+        if (extension?.titulos_recomendados?.length > 0) {
+          const promesas = extension.titulos_recomendados.map(async (titulo) => {
+            try {
+              const detalleIA = (extension.recomendaciones_detalle || []).find(d => 
+                d.titulo.toLowerCase().includes(titulo.toLowerCase()) || 
+                titulo.toLowerCase().includes(d.titulo.toLowerCase())
+              );
+
+              if (analisisIA.tipo === 'anime') {
+                const res = await buscarAnimePorTexto(titulo);
+                return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
+              } else {
+                const res = await buscarPorTexto(titulo, analisisIA.tipo);
+                return res.length > 0 ? { ...res[0], razonIA: detalleIA?.razon, esRecomendadoIA: true } : null;
+              }
+            } catch (e) { return null; }
+          });
+          nuevos = (await Promise.all(promesas)).filter(Boolean);
+        }
+      }
+      // PRIORIDAD 3: Respaldo por búsqueda optimizada
+      else if (analisisIA?.busqueda_optimizada || analisisIA?.palabras_clave?.length > 0) {
+        const busquedaTexto = analisisIA.busqueda_optimizada || analisisIA.palabras_clave.join(' ') || consulta;
+        console.log('Cargando más resultados usando búsqueda optimizada IA:', busquedaTexto);
+        
         if (analisisIA.tipo === 'anime') {
-          if (analisisIA.generos.length > 0) {
-            nuevos = await buscarAnimePorGeneros(analisisIA.generos, siguientePagina);
-          }
+          nuevos = await buscarAnimePorTexto(busquedaTexto, siguientePagina);
         } else {
+          nuevos = await buscarPorTexto(busquedaTexto, analisisIA.tipo, siguientePagina);
+        }
+
+        if (nuevos.length === 0 && idReferenciaActual) {
+          console.warn('Búsqueda optimizada devolvió 0 resultados. Activando respaldo por similitud...');
           nuevos = await obtenerSimilares(idReferenciaActual, analisisIA.tipo, siguientePagina);
         }
-      } 
-      // MODO 2: Descubrimiento Inteligente (Generos / Keywords)
-      else {
-        const busquedaTexto = analisisIA.palabras_clave.join(' ') || consulta;
-        if (analisisIA.tipo === 'anime') {
-          if (analisisIA.generos.length > 0) {
-            nuevos = await buscarAnimePorGeneros(analisisIA.generos, siguientePagina);
-          } else {
-            nuevos = await buscarAnimePorTexto(busquedaTexto, siguientePagina);
-          }
+      }
+      // PRIORIDAD 3: Persistencia de Similitud (Fallback Tradicional)
+      else if (idReferenciaActual) {
+        if (tipoBusquedaActual === 'anime') {
+          nuevos = await buscarAnimePorGeneros([], siguientePagina);
         } else {
-          if (analisisIA.generos.length > 0) {
-            nuevos = await buscarPorGeneros(analisisIA.tipo, analisisIA.generos, siguientePagina);
-          } else {
-            nuevos = await buscarPorTexto(busquedaTexto, analisisIA.tipo, siguientePagina);
-          }
+          nuevos = await obtenerSimilares(idReferenciaActual, tipoBusquedaActual, siguientePagina);
         }
       }
 
@@ -383,7 +400,11 @@ export default function Buscar() {
             <button
               key={t}
               className={`buscar-filtro ${filtroTipo === t ? 'activo' : ''}`}
-              onClick={() => { setFiltroTipo(t); setPagina(1); }}
+              onClick={() => {
+                if (t !== filtroTipo) {
+                  realizarBusqueda(consulta, t === 'todo' ? null : t);
+                }
+              }}
             >
               {t === 'todo' ? 'Todo' : t === 'pelicula' ? 'Movies' : t === 'serie' ? 'TV Shows' : 'Anime'}
             </button>
@@ -429,6 +450,7 @@ export default function Buscar() {
                 ))}
               </div>
               
+              {/* El botón "Ver más" ahora siempre está disponible para seguir explorando */}
               <div className="buscar-ver-mas-contenedor">
                 <button 
                   className="boton-secundario" 
@@ -436,7 +458,6 @@ export default function Buscar() {
                   disabled={cargandoMas}
                   style={{ minWidth: '180px', position: 'relative' }}
                 >
-                  {/* LOGICA ESTATICA: Los elementos SIEMPRE existen para evitar errores de reconciliación */}
                   <span style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
