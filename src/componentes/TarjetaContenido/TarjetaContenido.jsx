@@ -1,4 +1,4 @@
-import { Heart, Star } from 'lucide-react';
+import { Heart, Star, Sparkles } from 'lucide-react';
 import { useStore } from '../../estado/useStore';
 import './TarjetaContenido.css';
 
@@ -75,6 +75,12 @@ export default function TarjetaContenido({ contenido, onClick, indice = 0 }) {
       <div className="tarjeta-info">
         <h3 className="tarjeta-titulo">{contenido.titulo}</h3>
         {contenido.anio && <span className="tarjeta-anio">{contenido.anio}</span>}
+        {contenido.razonIA && (
+          <div className="tarjeta-razon-ia">
+            <Sparkles size={12} className="icono-ia" />
+            <span>{contenido.razonIA}</span>
+          </div>
+        )}
       </div>
     </article>
   );

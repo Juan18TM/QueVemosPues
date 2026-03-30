@@ -19,8 +19,11 @@ const cacheIA = new Map(); // Caché en memoria para evitar llamadas redundantes
  * Analiza el texto del usuario para extraer tipo, géneros, palabras clave y títulos de referencia.
  * Implementa rotación de modelos gratuitos para mitigar errores 429/404 y usa caché en memoria.
  */
-export async function analizarTextoConIA(texto, reintentos = 1) {
+export async function analizarTextoConIA(texto, reintentos = 1, tipoForzado = null) {
   const textoLimpio = texto.trim();
+  
+  // Generar clave de caché que incluya el tipo forzado
+  const cacheKey = `${textoLimpio}-${tipoForzado || 'auto'}`;
   
   // Guarda: No gastar IA en textos muy cortos
   if (textoLimpio.length < 3) {
@@ -28,9 +31,9 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
   }
 
   // Caché: Retornar resultado memorizado si existe
-  if (cacheIA.has(textoLimpio)) {
-    console.log('Usando caché de IA para:', textoLimpio);
-    return cacheIA.get(textoLimpio);
+  if (cacheIA.has(cacheKey)) {
+    console.log('Usando caché de IA para:', cacheKey);
+    return cacheIA.get(cacheKey);
   }
 
   if (!API_KEY_OPENROUTER && !API_KEY_GROQ && !API_KEY_GEMINI) {
@@ -38,27 +41,49 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     return fallbackLocal(textoLimpio);
   }
 
+  const fechaActual = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  
+  // Instrucción especial si el tipo está forzado
+  const instruccionForzada = tipoForzado 
+    ? `EL USUARIO HA FORZADO EL TIPO: "${tipoForzado.toUpperCase()}". Todas tus recomendaciones y análisis DEBEN ser exclusivamente de este tipo.`
+    : '';
+
   const prompt = `
-    Analiza el siguiente texto de un usuario que busca contenido (películas, series o anime) y responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin bloques de código) con esta estructura:
+    Eres un "Estratega Cinematográfico de Élite" especializado en curación de contenido (películas, series y anime). 
+    Tu misión es analizar la solicitud del usuario y devolver una respuesta técnica, precisa y de alta calidad (TOP recommendations).
+
+    CONTEXTO ACTUAL: Estamos en ${fechaActual}. 
+    IMPORTANTE: Ya se han estrenado megaproducciones como "Project Hail Mary" (marzo 2026) y "Ballerina" (2025). Inclúyelas en tus recomendaciones si encajan con el género o atmósfera solicitada.
+    
+    ${instruccionForzada}
+
+    REGLAS DE ORO PARA RECOMENDACIONES:
+    1. RELEVANCIA EXTREMA: Si el usuario busca algo como "John Wick" o "Sci-fi inteligente", tus 20 títulos recomendados DEBEN incluir obligatoriamente sus spin-offs modernos ("Ballerina") y éxitos contemporáneos de alto impacto ("Extraction", "Atomic Blonde", "Project Hail Mary"). Comparte el ADN de la obra (temas, atmósfera, estilo visual, coreografías).
+    2. CALIDAD DE CURACIÓN: Prioriza obras con buena crítica o estatus de culto. No des resultados genéricos o de relleno.
+    3. ESTRATEGIA DE BÚSQUEDA: En "busqueda_optimizada", crea un string de búsqueda TÉCNICO en INGLÉS (ej: "supernatural horror", "mind-bending sci-fi", "neo-noir action"). No incluyas frases en español como "peliculas de..." ya que TMDB no las indexa bien.
+    4. PALABRAS CLAVE: No extraigas palabras literales; proporciona etiquetas conceptuales (ej: "slow burn", "plot twist", "cinematografía neón", "gun-fu").
+
+    RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO (sin bloques de código, sin markdown):
     {
-      "tipo": "pelicula" | "serie" | "anime",
-      "generos": ["Género1", "Género2"],
-      "palabras_clave": ["término1", "término2"],
-      "titulo_referencia": "Nombre de la obra" | null,
-      "mensaje": "Mensaje conversacional recomendando o explicando la sugerencia",
-      "titulos_recomendados": ["Titulo 1", "Titulo 2", "Titulo 3", "Titulo 4", "Titulo 5", "Titulo 6", "Titulo 7", "Titulo 8", "Titulo 9", "Titulo 10"]
+      "tipo": "${tipoForzado || 'pelicula | serie | anime'}",
+      "generos": ["Genero1", "Genero2"],
+      "palabras_clave": ["Etiqueta1", "Etiqueta2", "Etiqueta3"],
+      "titulo_referencia": "Nombre corregido de la obra mencionada" | null,
+      "busqueda_optimizada": "Keywords técnicas en inglés",
+      "mensaje": "Mensaje sofisticado y breve justificando la selección general",
+      "titulos_recomendados": ["Titulo 1", "Titulo 2", ..., "Titulo 20"],
+      "recomendaciones_detalle": [
+        { "titulo": "Titulo 1", "razon": "Breve frase potente de por qué verla" }
+      ]
     }
 
-    Texto del usuario: "${texto}"
+    TEXTO DEL USUARIO: "${texto}"
     
-    Reglas:
-    1. "tipo": debe ser "pelicula", "serie" o "anime".
-    2. "generos": lista de géneros en español.
-    3. "palabras_clave": términos para búsqueda textual.
-    4. "titulo_referencia": Si el usuario menciona un título, extrae SOLO el nombre corregido. Si no, null.
-    5. "mensaje": Un breve mensaje de la IA. NO uses NINGUNA comilla (ni simple ni doble) dentro del texto del mensaje para evitar corromper el JSON.
-    6. "titulos_recomendados": Un arreglo con exactamente 10 títulos. SÚPER IMPORTANTE: Deben ser EXTREMADAMENTE RELEVANTES a la solicitud original. Si el usuario busca algo como otra obra o una vibra específica, prioriza obligatoriamente secuelas, spin-offs directos de ese mismo universo, o producciones modernas que compartan exactamente el mismo tono, atmósfera y género de acción/estilo. No des resultados genéricos o antiguos si buscan algo moderno. Nombres muy exactos.
-    7. Responde ÚNICAMENTE un JSON válido. Todas las claves y valores string deben estar rodeadas por comillas dobles estrictamente.
+    ${instruccionForzada}
+
+    IMPORTANTE: 
+    - No uses comillas dentro del "mensaje" o "razon" para evitar errores de parseo JSON.
+    - Asegúrate de que "titulos_recomendados" contenga exactamente 20 títulos muy potentes.
   `;
 
   let con = null;
@@ -156,6 +181,17 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
     }
     const resultadoParseado = JSON.parse(con);
     
+    // Asegurar compatibilidad y campos mínimos
+    if (!resultadoParseado.busqueda_optimizada) {
+      resultadoParseado.busqueda_optimizada = textoLimpio;
+    }
+    if (!resultadoParseado.recomendaciones_detalle) {
+      resultadoParseado.recomendaciones_detalle = (resultadoParseado.titulos_recomendados || []).map(t => ({
+        titulo: t,
+        razon: "Recomendación basada en tus preferencias."
+      }));
+    }
+    
     cacheIA.set(textoLimpio, resultadoParseado);
     return resultadoParseado;
   } catch (parseError) {
@@ -172,15 +208,112 @@ export async function analizarTextoConIA(texto, reintentos = 1) {
   }
 }
 
-function fallbackLocal(texto) {
+/**
+ * CONTINUACIÓN DE DESCUBRIMIENTO (MODO PROFUNDO)
+ * Solicita a la IA 10 recomendaciones adicionales basadas en la consulta original,
+ * pero prohibiendo explícitamente los títulos que ya se mostraron.
+ */
+export async function obtenerMasRecomendacionesIA(texto, titulosVistos = [], tipo = 'pelicula') {
+  const fechaActual = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  
+  const prompt = `
+    Eres el "Estratega Cinematográfico de Élite" en una sesión de descubrimiento PROFUNDO.
+    Estamos en ${fechaActual}. 
+    IMPORTANTE: "Project Hail Mary" (marzo 2026) y "Ballerina" (2025) ya están disponibles y son éxitos masivos.
+
+    El usuario busca: "${texto}"
+    YA RECOMENDASTE ESTOS TÍTULOS (ESTÁN PROHIBIDOS): [${titulosVistos.join(', ')}]
+
+    TAREA:
+    Genera 10 títulos NUEVOS y ÚNICOS que no estén en la lista de arriba, pero que mantengan la misma calidad y relevancia "Pro".
+    No repitas NADA. Si el usuario buscó una saga o un tema como "ciencia ficción", busca joyas ocultas, éxitos recientes como "Project Hail Mary" o películas con el mismo ADN técnico.
+
+    RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO:
+    {
+      "titulos_recomendados": ["Nuevo 1", "Nuevo 2", ..., "Nuevo 10"],
+      "recomendaciones_detalle": [
+        { "titulo": "Nuevo 1", "razon": "Por qué es la siguiente elección lógica" }
+      ],
+      "mensaje": "Breve comentario sobre esta nueva selección"
+    }
+  `;
+
+  // Usamos la misma lógica de orquestación (Groq > Gemini > OpenRouter)
+  // Para brevedad en esta implementación estratégica, llamaremos al orquestador principal
+  // pero con el prompt de "Seguir".
+  
+  // Como analizarTextoConIA está diseñada para el análisis inicial,
+  // vamos a extraer la lógica de llamada a una función interna 'consultarOrquestador'
+  // o simplemente duplicar el flujo de consulta aquí para este prompt específico.
+
+  return consultarOrquestador(prompt);
+}
+
+// Factorización de la lógica de consulta para evitar duplicación
+async function consultarOrquestador(prompt, reintentos = 1) {
+  let con = null;
+
+  // 1. Groq
+  if (API_KEY_GROQ) {
+    try {
+      const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' }
+      }, { headers: { 'Authorization': `Bearer ${API_KEY_GROQ}` } });
+      con = res.data.choices[0].message.content;
+    } catch (e) {}
+  }
+
+  // 2. Gemini
+  if (!con && API_KEY_GEMINI) {
+    try {
+      const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY_GEMINI}`, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      con = res.data.candidates[0].content.parts[0].text;
+    } catch (e) {}
+  }
+
+  // 3. OpenRouter
+  if (!con && API_KEY_OPENROUTER) {
+    try {
+      const modelo = MODELOS_GRATUITOS[indiceActual];
+      const res = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model: modelo,
+        messages: [{ role: 'user', content: prompt }]
+      }, { headers: { 'Authorization': `Bearer ${API_KEY_OPENROUTER}` } });
+      con = res.data.choices[0].message.content;
+    } catch (e) {
+      if (reintentos < 3) {
+        indiceActual = (indiceActual + 1) % MODELOS_GRATUITOS.length;
+        return consultarOrquestador(prompt, reintentos + 1);
+      }
+    }
+  }
+
+  if (!con) return { titulos_recomendados: [] };
+
+  try {
+    const matchJson = con.match(/\{[\s\S]*\}/);
+    return JSON.parse(matchJson ? matchJson[0] : con);
+  } catch (e) {
+    return { titulos_recomendados: [] };
+  }
+}
+
+export function fallbackLocal(texto) {
   const t = texto.toLowerCase();
   const analisis = {
     tipo: 'pelicula',
     generos: [],
     palabras_clave: [],
     titulo_referencia: null,
+    busqueda_optimizada: texto,
     mensaje: "Aquí tienes algunas recomendaciones basadas en tu búsqueda.",
-    titulos_recomendados: []
+    titulos_recomendados: [],
+    recomendaciones_detalle: []
   };
 
   if (t.includes('anime')) analisis.tipo = 'anime';
