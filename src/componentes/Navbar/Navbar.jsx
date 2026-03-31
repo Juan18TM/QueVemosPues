@@ -26,6 +26,7 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="navbar-contenido contenedor">
         <Link to="/" className="navbar-logo">
+          <img src="/sombrero.png" alt="Logo" className="navbar-logo-img" />
           QueVemosPues
         </Link>
 

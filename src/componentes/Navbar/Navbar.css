@@ -16,12 +16,39 @@
 }
 
 .navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   font-family: var(--fuente-display);
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--acento-hover);
-  letter-spacing: -0.5px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--texto-primario);
+  letter-spacing: -0.8px;
   white-space: nowrap;
+  padding: 6px 12px;
+  margin-left: -12px;
+  border-radius: var(--radio-lg);
+  transition: all var(--transicion-normal);
+}
+
+.navbar-logo:hover {
+  background: var(--acento-suave);
+  color: var(--acento-hover);
+}
+
+.navbar-logo-img {
+  width: 50px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
+  transition: transform var(--transicion-normal);
+  background-color: transparent;
+}
+
+.navbar-logo:hover .navbar-logo-img {
+  transform: rotate(-5deg) scale(1.1);
 }
 
 .navbar-enlaces {
