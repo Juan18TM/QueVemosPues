@@ -153,14 +153,13 @@ export default function IntroAnimacion({ onFin }) {
       style={{ '--duracion-intro': `${(DURACION - 300) / 1000}s` }}
       onClick={saltar}
     >
-      <div className="intro-ruido" />
       <div className="intro-flicker" />
       <div className="intro-scanlines" />
       <div className="intro-vignette" />
 
       {/* Filmstrips top & bottom — letterbox cinemático */}
-      <div className="intro-film-top"><div className="intro-film-row">{Array.from({length:40}).map((_,i)=><div key={i} className="intro-perf-h"/>)}</div></div>
-      <div className="intro-film-bot"><div className="intro-film-row">{Array.from({length:40}).map((_,i)=><div key={i} className="intro-perf-h"/>)}</div></div>
+      <div className="intro-film-top" />
+      <div className="intro-film-bot" />
 
       {/* Escena principal */}
       <div className="intro-escena-wrap">
