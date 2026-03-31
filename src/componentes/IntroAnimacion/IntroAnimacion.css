@@ -20,23 +20,13 @@
 }
 
 /* ── Efectos de película ── */
-.intro-ruido {
-  position: absolute; inset: 0; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-  animation: ruido 0.1s steps(1) infinite; opacity: 0.35;
-}
-@keyframes ruido {
-  0%   { background-position: 0 0; }
-  25%  { background-position: -5px 3px; }
-  50%  { background-position: 3px -5px; }
-  75%  { background-position: -3px 5px; }
-  100% { background-position: 5px -3px; }
-}
 
 .intro-flicker {
   position: absolute; inset: 0; pointer-events: none;
   background: rgba(255,240,180,0.015);
   animation: flicker 0.09s ease infinite alternate;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 @keyframes flicker {
   from { opacity: 0.7; }
@@ -60,45 +50,30 @@
   position: absolute;
   left: 0; right: 0;
   height: 48px;
-  background: #080810;
+  background-color: #080810;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='48'%3E%3Crect x='6' y='10' width='24' height='28' rx='4' fill='%230d0d1a' stroke='%23222238' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 36px 100%;
   border-bottom: 2px solid #1a1a28;
-  overflow: hidden;
   z-index: 3;
+  animation: filmroll-bg 0.9s linear infinite;
 }
 .intro-film-bot {
   top: auto;
   bottom: 0;
   border-bottom: none;
   border-top: 2px solid #1a1a28;
+  animation: filmroll-bg-rev 0.9s linear infinite;
 }
 .intro-film-top { top: 0; }
 
-.intro-film-row {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  padding: 9px 12px;
-  animation: filmroll-h 1.2s linear infinite;
-  width: max-content;
+@keyframes filmroll-bg {
+  from { background-position-x: 0px; }
+  to   { background-position-x: 36px; }
 }
-.intro-film-bot .intro-film-row {
-  animation: filmroll-h-rev 1.2s linear infinite;
-}
-@keyframes filmroll-h {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-80px); }
-}
-@keyframes filmroll-h-rev {
-  from { transform: translateX(-80px); }
-  to   { transform: translateX(0); }
-}
-
-.intro-perf-h {
-  width: 24px; height: 28px;
-  border: 2px solid #222238;
-  border-radius: 4px;
-  background: #0d0d1a;
-  flex-shrink: 0;
+@keyframes filmroll-bg-rev {
+  from { background-position-x: 36px; }
+  to   { background-position-x: 0px; }
 }
 
 /* ── Escena principal ── */
@@ -115,7 +90,8 @@
   width: 100%;
   height: auto;
   animation: proyector-aparecer 0.7s ease both;
-  filter: drop-shadow(0 0 32px rgba(139,92,246,0.4));
+  transform: translateZ(0);
+  will-change: transform, opacity;
 }
 @keyframes proyector-aparecer {
   from { opacity: 0; transform: translateX(-30px); }
@@ -188,16 +164,15 @@
   letter-spacing: 1.5px;
   white-space: nowrap;
   text-shadow:
-    0 0 18px rgba(255,248,180,0.95),
-    0 0 40px rgba(255,240,120,0.55),
-    0 0 80px rgba(255,200,80,0.3);
+    0 0 10px rgba(255,248,180,0.8),
+    0 0 20px rgba(255,240,120,0.4);
   margin-bottom: 6px;
+  transform: translateZ(0);
 }
 .intro-logo-text span {
   color: #c8b8f8;
   text-shadow:
-    0 0 18px rgba(139,92,246,0.9),
-    0 0 40px rgba(139,92,246,0.45);
+    0 0 10px rgba(139,92,246,0.8);
 }
 
 .intro-subtitulo-text {
