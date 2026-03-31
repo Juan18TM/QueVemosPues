@@ -107,26 +107,32 @@
 
 .panel-similares {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--espacio-sm);
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--espacio-md);
 }
 
 .panel-similar-item {
-  aspect-ratio: 16/10;
+  aspect-ratio: 2/3;
   border-radius: var(--radio-md);
   overflow: hidden;
   cursor: pointer;
   transition: all var(--transicion-normal);
   border: 1px solid var(--borde-sutil);
+  position: relative;
 }
 .panel-similar-item:hover {
   border-color: var(--acento-primario);
-  transform: scale(1.03);
+  transform: scale(1.04);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.25);
 }
 .panel-similar-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--transicion-normal);
+}
+.panel-similar-item:hover img {
+  transform: scale(1.06);
 }
 
 .panel-similar-placeholder {
