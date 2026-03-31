@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { supabase } from './servicios/supabaseClient';
 import { useStore } from './estado/useStore';
 import Navbar from './componentes/Navbar/Navbar';
 import Footer from './componentes/Footer/Footer';
 import RutaProtegida from './componentes/RutaProtegida/RutaProtegida';
+import IntroAnimacion from './componentes/IntroAnimacion/IntroAnimacion';
 import Inicio from './paginas/Inicio/Inicio';
 import Login from './paginas/Auth/Login';
 import Registro from './paginas/Auth/Registro';
@@ -14,6 +15,14 @@ import './App.css';
 
 function App() {
   const { setUsuario, setCargandoAuth, cargarFavoritos, cargarHistorial } = useStore();
+  const [mostrarIntro, setMostrarIntro] = useState(
+    () => !sessionStorage.getItem('intro-vista')
+  );
+
+  const handleFinIntro = () => {
+    sessionStorage.setItem('intro-vista', '1');
+    setMostrarIntro(false);
+  };
 
   useEffect(() => {
     // Obtener sesión actual
@@ -40,6 +49,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      {mostrarIntro && <IntroAnimacion onFin={handleFinIntro} />}
       <div className="app">
         <Navbar />
         <main className="app-main">
