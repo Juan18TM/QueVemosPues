@@ -31,7 +31,7 @@ export default function Registro() {
     setCargando(true);
     try {
       await registrarse(email, password);
-      setExito(true);
+      navigate('/perfil');
     } catch (err) {
       setError(err.message || 'Error al crear cuenta');
     } finally {
@@ -39,22 +39,6 @@ export default function Registro() {
     }
   };
 
-  if (exito) {
-    return (
-      <div className="auth-pagina">
-        <div className="auth-contenedor animar-aparecer">
-          <div className="auth-header">
-            <Sparkles size={32} className="auth-icono-exito" />
-            <h1 className="auth-titulo">¡Cuenta creada!</h1>
-            <p className="auth-subtitulo">
-              Revisa tu email para confirmar tu cuenta. Luego podrás iniciar sesión.
-            </p>
-          </div>
-          <Link to="/login" className="boton-primario auth-submit">Ir a Iniciar Sesión</Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-pagina">

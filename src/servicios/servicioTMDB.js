@@ -69,15 +69,50 @@ export async function obtenerSimilares(id, tipo = 'pelicula', pagina = 1) {
   const mediaType = tipo === 'pelicula' ? 'movie' : 'tv';
 
   try {
-    const { data } = await tmdb.get(`/${mediaType}/${id}/similar`, {
-      params: { page: pagina }
+    // Primero obtenemos los géneros del contenido original para poder filtrar
+    const detalleOriginal = await tmdb.get(`/${mediaType}/${id}`);
+    const generosOriginales = detalleOriginal.data.genres?.map(g => g.id) || [];
+
+    // TMDB /recommendations es más preciso que /similar (usa patrones de visualización reales)
+    const [recomendaciones, similares] = await Promise.all([
+      tmdb.get(`/${mediaType}/${id}/recommendations`, { params: { page: pagina } })
+        .then(r => r.data.results)
+        .catch(() => []),
+      tmdb.get(`/${mediaType}/${id}/similar`, { params: { page: pagina } })
+        .then(r => r.data.results)
+        .catch(() => [])
+    ]);
+
+    // Combinar y priorizar: primero las recomendaciones (más relevantes), luego similares
+    const mapaResultados = new Map();
+    [...recomendaciones, ...similares].forEach(item => {
+      if (!mapaResultados.has(item.id)) {
+        mapaResultados.set(item.id, item);
+      }
     });
-    return data.results.map(item => formatearResultado(item, tipo));
+
+    let resultados = Array.from(mapaResultados.values());
+
+    // Si tenemos géneros del original, ordenar los que compartan más géneros primero
+    if (generosOriginales.length > 0) {
+      resultados = resultados.sort((a, b) => {
+        const generosA = a.genre_ids || [];
+        const generosB = b.genre_ids || [];
+        const coincidenciaA = generosA.filter(g => generosOriginales.includes(g)).length;
+        const coincidenciaB = generosB.filter(g => generosOriginales.includes(g)).length;
+        // Priorizar por coincidencia de géneros, luego por popularidad
+        if (coincidenciaB !== coincidenciaA) return coincidenciaB - coincidenciaA;
+        return (b.popularity || 0) - (a.popularity || 0);
+      });
+    }
+
+    return resultados.slice(0, 12).map(item => formatearResultado(item, tipo));
   } catch (error) {
     console.error('Error TMDB similares:', error);
     return [];
   }
 }
+
 
 export async function obtenerTendencias(tipo = 'all') {
   const mediaType = tipo === 'pelicula' ? 'movie' : tipo === 'serie' ? 'tv' : 'all';
