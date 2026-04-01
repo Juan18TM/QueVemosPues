@@ -157,10 +157,6 @@ export default function IntroAnimacion({ onFin }) {
       <div className="intro-scanlines" />
       <div className="intro-vignette" />
 
-      {/* Filmstrips top & bottom — letterbox cinemático */}
-      <div className="intro-film-top" />
-      <div className="intro-film-bot" />
-
       {/* Escena principal */}
       <div className="intro-escena-wrap">
         <EscenaCine />
